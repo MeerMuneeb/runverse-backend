@@ -16,7 +16,9 @@ export const createAd = async (req, res) => {
             fontColor,
             startDate,
             endDate,
-            displayCount
+            displayCount,
+            totalClicks,
+            totalViews
         } = req.body;
 
         // Variables to store image URLs
@@ -90,6 +92,8 @@ export const createAd = async (req, res) => {
         newAd.displayedThisMonth = 0;
         newAd.createdAt = new Date();
         newAd.updatedAt = new Date();
+        newAd.totalViews = 0;
+        newAd.totalClicks = 0;
 
         // Store the new ad in Firestore
         const docRef = await db.collection('ads').add(newAd);
@@ -272,6 +276,7 @@ export const getRandomAd = async (req, res) => {
         await db.collection('ads').doc(randomAd.id).update({
             displayedToday: admin.firestore.FieldValue.increment(1),
             displayedThisMonth: admin.firestore.FieldValue.increment(1),
+            totalViews: admin.firestore.FieldValue.increment(1),
         });
 
         // Update the ad's last updated date
@@ -283,6 +288,73 @@ export const getRandomAd = async (req, res) => {
         console.log("Error while fetching random ad:", error);
         res.status(500).json({ message: 'Failed to fetch random ad', error });
     }
+};
+
+export const clickAd = async (req, res) => {
+    try {
+        const { adId } = req.params;
+        const db = admin.firestore();
+
+        const adDoc = await db.collection('ads').doc(adId).get();
+        if (!adDoc.exists) {
+            return res.status(404).json({ message: 'Ad not found' });
+        }
+
+        await db.collection('ads').doc(adId).update({
+            totalClicks: admin.firestore.FieldValue.increment(1),
+            updatedAt: new Date()
+        });
+
+        res.status(200).json({ message: 'Click counted successfully' });
+    } catch (error) {
+        console.log("Error while counting click:", error);
+        res.status(500).json({ message: 'Failed to count click', error });
+    }
+};
+
+export const getAdClickRate = async (req, res) => {
+    try {
+        const db = admin.firestore();
+        const settingsRef = db.collection('ads').doc('ads_settings');
+        const settingsDoc = await settingsRef.get();
+
+        let perAdClickRate = 0;
+        if (!settingsDoc.exists) {
+            // Initialize if not present
+            await settingsRef.set({ perAdClickRate: 0, updatedAt: new Date() });
+        } else {
+            const data = settingsDoc.data();
+            perAdClickRate = typeof data.perAdClickRate === 'number' ? data.perAdClickRate : 0;
+        }
+
+        res.status(200).json({ rate: perAdClickRate });
+    } catch (error) {
+        console.log("Error while fetching ad click rate:", error);
+        res.status(500).json({ message: 'Failed to fetch ad click rate', error });
+    }
+};
+
+export const updateAdClickRate = async (req, res) => {
+    try {
+        const { rate } = req.body;
+        const perAdClickRate = parseFloat(rate);
+        const db = admin.firestore();
+        const settingsRef = db.collection('ads').doc('ads_settings');
+
+        if (typeof perAdClickRate !== 'number') {
+            return res.status(400).json({ message: 'perAdClickRate must be a number' });
+        }
+
+        await settingsRef.set({
+            perAdClickRate,
+            updatedAt: new Date()
+        }, { merge: true });
+
+        res.status(200).json({ message: 'perAdClickRate updated successfully', perAdClickRate });
+    } catch (error) {
+        console.log("Error while updating ad click rate:", error);
+        res.status(500).json({ message: 'Failed to update ad click rate', error });
+    }   
 };
 
 

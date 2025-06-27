@@ -5,7 +5,10 @@ import {
   getAdById,
   updateAd,
   deleteAd,
-  getRandomAd
+  getRandomAd,
+  clickAd,
+  getAdClickRate,      // <-- add this import
+  updateAdClickRate    // <-- add this import
 } from '../controllers/adController.js';
 import upload from '../middleware/upload.js'; // Assuming this is your multer middleware for handling uploads
 
@@ -29,4 +32,16 @@ router.delete('/delete/:adId', deleteAd);
 // Route to get a random ad
 router.get('/get-ad/random', getRandomAd);
 
+// Route to count ad clicks
+router.post('/ad-click/:adId', clickAd);
+
+// Route to get perAdClickRate of a specific ad
+router.get('/get-click-rate', getAdClickRate);
+
+// Route to update perAdClickRate of a specific ad
+router.put('/update-click-rate', updateAdClickRate);
+
 export default router;
+
+// Example: http://localhost:5000/api/ads/api
+//CHANGE THE DB   

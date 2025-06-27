@@ -1,7 +1,7 @@
 import admin from '../config/firebase.js';
 import { saveHistory } from './historyController.js';
 
-export const completeRun = async (req, res) => {
+export const completeRunn = async (req, res) => {
   const db = admin.firestore();
   const { uid, distance, duration } = req.body;
 
@@ -138,7 +138,154 @@ export const completeRun = async (req, res) => {
   }
 };
 
+export const completeRun = async (req, res) => {
+  const db = admin.firestore();
+  const { uid, duration } = req.body;
+
+  // Ensure uid and duration are provided
+  if (!uid || !duration) {
+    return res.status(400).json({ error: 'uid and duration are required' });
+  }
+
+  try {
+    // Fetch user info
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const userData = userDoc.data();
+    const { name, picture = '', eventId, packageId } = userData;
+
+    // Ensure eventId and packageId exist in the user data
+    if (!eventId || !packageId) {
+      return res.status(400).json({ error: 'User does not have valid eventId or packageId' });
+    }
+
+    // Fetch all runs for the eventId and packageId, ordered by ascending duration (fastest first)
+    const leaderboardRef = db.collection('leaderboard').doc(eventId).collection(packageId);
+    const snapshot = await leaderboardRef
+      .orderBy('duration', 'asc')  // Sort by duration (fastest first)
+      .get();
+
+    const runs = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    // Insert new run in sorted order with correct rank calculation
+    let inserted = false;
+    const updatedRuns = [];
+    let currentRank = 1;
+    let prevDuration = null;
+    let prevRank = 1;
+    let userRank = null;
+
+    for (let i = 0; i <= runs.length; i++) {
+      if (!inserted) {
+        if (i === runs.length || runs[i].duration > duration) {
+          // Insert new run here
+          updatedRuns.push({
+            id: null,
+            uid,
+            name,
+            picture,
+            eventId,
+            packageId,
+            duration,
+            rank: currentRank,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          userRank = currentRank;
+          inserted = true;
+          currentRank++; // increment after insertion
+        }
+      }
+
+      if (i < runs.length) {
+        const run = { ...runs[i] }; // clone to avoid mutating original
+        if (prevDuration !== null && run.duration === prevDuration) {
+          // Tie: same rank as previous
+          run.rank = prevRank;
+        } else {
+          run.rank = currentRank;
+          prevRank = currentRank;
+          prevDuration = run.duration;
+        }
+        updatedRuns.push(run);
+        currentRank++;
+      }
+    }
+
+    // Just a safety check (shouldn't happen)
+    if (!inserted) {
+      userRank = currentRank;
+      updatedRuns.push({
+        id: null,
+        uid,
+        name,
+        picture,
+        eventId,
+        packageId,
+        duration,
+        rank: currentRank,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+
+    // Debug log updated ranks before committing
+    console.log('Updated runs to commit:', updatedRuns.map(r => ({
+      id: r.id,
+      uid: r.uid,
+      duration: r.duration,
+      rank: r.rank,
+    })));
+
+
+    // Commit batch updates:
+    const batch = db.batch();
+
+    // Update ranks of existing runs
+    for (const run of updatedRuns) {
+      if (run.id) {
+        batch.update(db.collection('leaderboard').doc(eventId).collection(packageId).doc(run.id), { rank: run.rank });
+      }
+    }
+
+    // Add the new run document
+    const newRunData = updatedRuns.find(r => r.id === null);
+    if (newRunData) {
+      const { id, ...dataToAdd } = newRunData;
+      batch.set(db.collection('leaderboard').doc(eventId).collection(packageId).doc(), dataToAdd);
+    }
+
+    await batch.commit();
+
+    // === Added: Save history for the user after leaderboard update ===
+    try {
+      await saveHistory(uid);
+    } catch (historyError) {
+      console.error(`Failed to save history for user ${uid}:`, historyError);
+      // Optional: decide whether to fail the request or ignore this error
+    }
+
+    return res.status(200).json({
+      uid,
+      name,
+      picture,
+      eventId,
+      packageId,
+      duration,
+      rank: userRank,
+      message: 'Run recorded successfully',
+    });
+  } catch (error) {
+    console.error('Error in completeRun:', error);
+    return res.status(500).json({ error: 'Failed to record run' });
+  }
+};
+
 /**
+ * 
  * Record a team run on the team leaderboard.
  * Accepts a full `team` object with necessary fields.
  * Extracts needed fields and performs leaderboard update.
@@ -152,6 +299,7 @@ export const completeRun = async (req, res) => {
  * 
  *  - Result with rank and run info
  */
+
 export const completeTeamRun = async (team) => {
   const db = admin.firestore();
 
