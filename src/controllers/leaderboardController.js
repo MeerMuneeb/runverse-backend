@@ -410,7 +410,7 @@ export const completeTeamRun = async (team) => {
   }
 };
 
-export const getLeaderboard = async (req, res) => {
+export const getLeaderboardd = async (req, res) => {
   const db = admin.firestore();
   let { distance, page = 1, limit = 10 } = req.query;
 
@@ -447,9 +447,9 @@ export const getLeaderboard = async (req, res) => {
   }
 };
 
-export const getLeaderboardd = async (req, res) => {
+export const getLeaderboard = async (req, res) => {
   const db = admin.firestore();
-  const { eventId, packageId, page = 1, limit = 10 } = req.query;
+  let { eventId, packageId, page = 1, limit = 10 } = req.query;
 
   // Ensure eventId and packageId are provided
   if (!eventId || !packageId) {
@@ -484,27 +484,27 @@ export const getLeaderboardd = async (req, res) => {
   }
 };
 
-
+//GET /api/teamLeaderboard?eventId=event123&packageId=package456&page=1&limit=10
 export const getTeamLeaderboard = async (req, res) => {
   const db = admin.firestore();
-  let { distance, page = 1, limit = 10 } = req.query;
+  let { eventId, packageId, page = 1, limit = 10 } = req.query;
 
-  if (!distance) {
-    return res.status(400).json({ error: 'Distance is required' });
+  // Ensure eventId and packageId are provided
+  if (!eventId || !packageId) {
+    return res.status(400).json({ error: 'eventId and packageId are required' });
   }
 
-  page = Number(page);
+  page = Number(page);  // Explicitly convert page and limit to numbers
   limit = Number(limit);
-  distance = Number(distance);
 
   try {
-    const leaderboardRef = db.collection('teamLeaderboard');
+    // Query the team leaderboard for the specific eventId and packageId, ordered by duration (ascending)
+    const leaderboardRef = db.collection('teamLeaderboard').doc(eventId).collection(packageId);
 
     const query = leaderboardRef
-      .where('distance', '==', distance)
-      .orderBy('rank', 'asc')
-      .offset((page - 1) * limit)
-      .limit(limit);
+      .orderBy('duration', 'asc') // Sort by duration (fastest first)
+      .offset((page - 1) * limit) // Pagination offset
+      .limit(limit); // Pagination limit
 
     const snapshot = await query.get();
 
