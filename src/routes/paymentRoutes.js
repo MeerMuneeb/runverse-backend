@@ -3,8 +3,8 @@ import { createCheckoutSession, createPaymentIntent, createPaymentSheet, payWith
 
 const router = express.Router();
 
-router.post('/checkout', createCheckoutSession);
-router.post('/create-payment-intent', createPaymentIntent);
+// router.post('/checkout', createCheckoutSession);
+// router.post('/create-payment-intent', createPaymentIntent);
 router.post('/create-payment-sheet', createPaymentSheet);
 router.post('/pay-with-wallet', payWithWallet); //{ uid, packageId }
 

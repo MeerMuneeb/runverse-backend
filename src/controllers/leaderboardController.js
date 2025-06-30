@@ -447,7 +447,82 @@ export const getLeaderboard = async (req, res) => {
   }
 };
 
+export const getLeaderboardd = async (req, res) => {
+  const db = admin.firestore();
+  const { eventId, packageId, page = 1, limit = 10 } = req.query;
+
+  // Ensure eventId and packageId are provided
+  if (!eventId || !packageId) {
+    return res.status(400).json({ error: 'eventId and packageId are required' });
+  }
+
+  page = Number(page);
+  limit = Number(limit);
+
+  try {
+    const leaderboardRef = db.collection('leaderboard').doc(eventId).collection(packageId);
+
+    // Query the leaderboard for the specific event and package, ordered by duration (ascending)
+    const query = leaderboardRef
+      .orderBy('duration', 'asc') // Sort by duration (fastest first)
+      .offset((page - 1) * limit) // Pagination offset
+      .limit(limit); // Pagination limit
+
+    const snapshot = await query.get();
+
+    const leaderboard = snapshot.docs.map(doc => {
+      return {
+        id: doc.id,
+        ...doc.data(),
+      };
+    });
+
+    return res.json({ leaderboard });
+  } catch (error) {
+    console.error('Error fetching leaderboard:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+
 export const getTeamLeaderboard = async (req, res) => {
+  const db = admin.firestore();
+  let { distance, page = 1, limit = 10 } = req.query;
+
+  if (!distance) {
+    return res.status(400).json({ error: 'Distance is required' });
+  }
+
+  page = Number(page);
+  limit = Number(limit);
+  distance = Number(distance);
+
+  try {
+    const leaderboardRef = db.collection('teamLeaderboard');
+
+    const query = leaderboardRef
+      .where('distance', '==', distance)
+      .orderBy('rank', 'asc')
+      .offset((page - 1) * limit)
+      .limit(limit);
+
+    const snapshot = await query.get();
+
+    const leaderboard = snapshot.docs.map(doc => {
+      return {
+        id: doc.id,
+        ...doc.data(),
+      };
+    });
+
+    return res.json({ leaderboard });
+  } catch (error) {
+    console.error('Error fetching team leaderboard:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const getTeamLeaderboardd = async (req, res) => {
   const db = admin.firestore();
   let { distance, page = 1, limit = 10 } = req.query;
 
