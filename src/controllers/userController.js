@@ -791,5 +791,28 @@ export async function getAchievements(req, res) {
   }
 }
 
+// DISABLE (SOFT DELETE) USER PROFILE
+export async function disableUserProfile(req, res) {
+  const db = admin.firestore();
+  const { uid } = req.params;
+
+  if (!uid) {
+    return res.status(400).json({ error: 'UID is required' });
+  }
+
+  try {
+    // Disable the user in Firebase Auth
+    await admin.auth().updateUser(uid, { disabled: true });
+
+    // Update the user's status in Firestore
+    await db.collection('users').doc(uid).update({ status: 'disabled' });
+
+    return res.status(200).json({ message: 'User profile disabled successfully' });
+  } catch (error) {
+    console.error('Error disabling user profile:', error);
+    return res.status(500).json({ error: 'Failed to disable user profile' });
+  }
+}
+
 
 

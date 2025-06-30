@@ -16,7 +16,8 @@ import {
   addAchievements,
   getAchievements,
   generateLoginToken,
-  verifyWooToken
+  verifyWooToken,
+  disableUserProfile
 } from '../controllers/userController.js';
 
 const router = Router();
@@ -36,6 +37,7 @@ router.get('/get-achievements/:uid', getAchievements); // New route for getting 
 router.put('/update/:uid', upload.single('picture'), updateUserById);
 router.get('/generate-login-token/:uid', generateLoginToken); // New route for generating WooCommerce login token
 router.post('/verify-token', verifyWooToken); // New route for verifying WooCommerce login token
+router.delete('/disable-profile/:uid', disableUserProfile); // Route for disabling user profile
 
 // Commented out routes moved to the end
 // router.put('/update', verifyToken, updateUser); // Commented out token verification
