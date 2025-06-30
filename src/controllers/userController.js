@@ -583,7 +583,7 @@ export async function updateUser(req, res) {
     }
 
     // If gender, weight, and height are present, set status to active
-    if (userData.gender && userData.weight && userData.height) {
+    if (userData.gender || userData.weight || userData.height) {
       userData.status = 'active';
     }
 
