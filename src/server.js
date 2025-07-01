@@ -37,7 +37,7 @@ initializeFirebase();
 // API Routes
 app.use('/api/users', userRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
-app.use('/api/payment', paymentRoutes);
+app.use('/api/payment', paymentRoutes);    
 app.use('/api/teams', teamRoutes);
 app.use('/api/packages', packageRoutes);
 app.use('/api/spinners', spinnerRoutes);

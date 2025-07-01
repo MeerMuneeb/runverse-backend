@@ -551,9 +551,14 @@ export async function allocateTokensToUser(uid, category, reason, metadata = {})
     const tokenConfigDoc = await db.collection('blockchain_config').doc('token_settings').get();
     const config = tokenConfigDoc.data();
 
+    if (!config) {
+      throw new Error('Token configuration not found');
+    }
+
     let tokenAmount;
     let status;
 
+    // Switch based on the category
     switch (category) {
       case 'login':
         tokenAmount = config.loginTokens;
@@ -570,7 +575,7 @@ export async function allocateTokensToUser(uid, category, reason, metadata = {})
         if (!rewardId) throw new Error('Reward ID is required for rewards category');
 
         const rewardDoc = await db.collection('rewards').doc(rewardId).get();
-        if (!rewardDoc.exists) return;
+        if (!rewardDoc.exists) return { message: 'Reward not found, skipping token allocation' };
 
         tokenAmount = rewardDoc.data().tokens;
         status = config.rewardsStatus;
@@ -582,7 +587,7 @@ export async function allocateTokensToUser(uid, category, reason, metadata = {})
         if (!badgeId) throw new Error('Badge ID is required for badges category');
 
         const badgeDoc = await db.collection('badges').doc(badgeId).get();
-        if (!badgeDoc.exists) return;
+        if (!badgeDoc.exists) return { message: 'Badge not found, skipping token allocation' };
 
         tokenAmount = badgeDoc.data().tokens;
         status = config.badgesStatus;
@@ -594,7 +599,7 @@ export async function allocateTokensToUser(uid, category, reason, metadata = {})
         if (!pkgId) throw new Error('Package ID is required for packages category');
 
         const pkg = config.packageTokens.find(pkg => pkg.pkgId === pkgId);
-        if (!pkg) return;
+        if (!pkg) return { message: 'Package not found, skipping token allocation' };
 
         tokenAmount = pkg.tokens;
         status = config.packagesStatus === 'active' && pkg.status === 'active' ? 'active' : 'inactive';
@@ -606,7 +611,7 @@ export async function allocateTokensToUser(uid, category, reason, metadata = {})
         if (!distance) throw new Error('Distance is required for runDistance category');
 
         const distConfig = config.distanceTokens[distance];
-        if (!distConfig) return;
+        if (!distConfig) return { message: 'No distance configuration found, skipping token allocation' };
 
         tokenAmount = distConfig.tokens;
         status = config.distanceStatus === 'active' && distConfig.status === 'active' ? 'active' : 'inactive';
@@ -614,30 +619,33 @@ export async function allocateTokensToUser(uid, category, reason, metadata = {})
       }
 
       default:
-        return; // Invalid category
+        return { message: 'Invalid category, skipping token allocation' }; // Invalid category
     }
 
-    // ⛔ Skip allocation if status is inactive
+    // Skip allocation if status is inactive
     if (status !== 'active') {
       console.log(`Skipping token allocation for category "${category}" due to inactive status.`);
-      return;
+      return { message: `Skipping token allocation for category "${category}" due to inactive status.` };
     }
 
-    // ⛔ Skip if token amount is invalid
+    // Skip if token amount is invalid
     if (tokenAmount === undefined || tokenAmount <= 0) {
-      return;
+      return { message: 'Invalid token amount, skipping allocation' };
     }
 
-    // ✅ Add tokens to wallet
+    // Add tokens to wallet
     const result = await addTokens(uid, tokenAmount, reason);
+    if (!result || !result.success) {
+      throw new Error('Token addition failed');
+    }
 
-    // 🔁 Update spent tokens
+    // Update spent tokens
     await db.collection('blockchain_config').doc('token_settings').update({
       spentTokens: admin.firestore.FieldValue.increment(tokenAmount),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    // 🧾 Log transaction
+    // Log the token transaction
     await db.collection('token_transactions').add({
       userId: uid,
       amount: tokenAmount,
@@ -648,13 +656,14 @@ export async function allocateTokensToUser(uid, category, reason, metadata = {})
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    return result;
+    return { message: `Successfully allocated ${tokenAmount} tokens to user ${uid}` };
 
   } catch (error) {
     console.error('Error allocating tokens to user:', error);
-    throw new Error(error.message || 'Failed to allocate tokens to user');
+    return { message: error.message || 'Failed to allocate tokens to user' };
   }
 }
+
 
 
 /**

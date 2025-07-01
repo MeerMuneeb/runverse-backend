@@ -1,5 +1,6 @@
 import stripe from '../config/stripe.js';
 import admin from '../config/firebase.js';
+import { allocateTokensToUser } from './blockchainController.js'; // Import token allocation function
 
 export const createCheckoutSession = async (req, res) => {
   const { uid, plan } = req.body;
@@ -251,7 +252,7 @@ export const payWithWallet = async (req, res) => {
     const wallet = walletSnap.data();
     const pkg = pkgSnap.data();
 
-    if (wallet.balance < pkg.price) {
+    if (wallet.balance < pkg.mvtPrice) {
       return res.status(400).json({ error: 'Insufficient wallet balance' });
     }
 
@@ -266,17 +267,21 @@ export const payWithWallet = async (req, res) => {
       totalMilestones = achievementQuery.docs[0].data().milestone_count || 0;
     }
 
-    // Update wallet: deduct balance and push transaction
+    // Generate the server timestamp outside of the transaction
+    const createdAt = admin.firestore.Timestamp.now();
+
+    // Prepare the new transaction object
     const newTransaction = {
       type: 'debit',
-      amount: pkg.price,
+      amount: pkg.mvtPrice,
       description: `Package purchase: ${pkg.name}`,
       packageId,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt, // Use concrete timestamp
     };
 
+    // Update wallet: deduct balance and push transaction
     await walletRef.update({
-      balance: admin.firestore.FieldValue.increment(-pkg.price),
+      balance: admin.firestore.FieldValue.increment(-pkg.mvtPrice),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       transactions: admin.firestore.FieldValue.arrayUnion(newTransaction),
     });
@@ -287,12 +292,13 @@ export const payWithWallet = async (req, res) => {
         packageId,
         status: 'active',
         paid: true,
+        type: 'premium',
         goal: Number(pkg.distance),
         totalMilestones,
         completedMilestones: 0,
         payment_data: {
           method: 'wallet',
-          amount_total: pkg.price,
+          amount_total: pkg.mvtPrice,
           currency: 'MVT',
           payment_status: 'succeeded',
           paid_at: admin.firestore.FieldValue.serverTimestamp(),
@@ -304,9 +310,15 @@ export const payWithWallet = async (req, res) => {
     // Allocate tokens
     try {
       const result = await allocateTokensToUser(uid, 'packages', 'Package reward', { pkgId: packageId });
-      console.log(result.message);
+      
+      // Ensure that result has a message or handle undefined result
+      if (result && result.message) {
+        console.log(result.message);
+      } else {
+        console.log('Token allocation was successful, but no message returned');
+      }
     } catch (err) {
-      console.error('Token allocation failed:', err);
+      console.error('Token allocation failed:', err.message || err);
     }
 
     res.status(200).json({ message: 'Wallet payment successful and user updated' });
@@ -315,3 +327,4 @@ export const payWithWallet = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
