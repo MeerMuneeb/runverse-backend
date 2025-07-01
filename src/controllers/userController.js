@@ -470,9 +470,15 @@ export async function getUserById(req, res) {
     const userData = userDoc.data();
 
     // Ensure type field exists
+    // Ensure type field exists and set to 'premium' if eventId exists
     if (!userData.type) {
+      if (userData.eventId) {
+      userData.type = 'premium';
+      await userRef.update({ type: 'premium' });
+      } else {
       userData.type = 'free';
       await userRef.update({ type: 'free' });
+      }
     }
 
     // Premium user event check

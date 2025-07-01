@@ -66,6 +66,7 @@ router.post('/webhook', async (req, res) => {
       await admin.firestore().collection('users').doc(firebaseUID).set(
         {
           packageId,
+          type: 'premium',  // Assuming 'premium' for paid packages
           status: "active",
           paid: true,
           goal: Number(distance),
