@@ -58,28 +58,40 @@ export const getEvents = async (req, res) => {
     const snapshot = await query.get();
     const now = new Date();
     const batch = db.batch();
+    let hasBatchOperations = false; // Flag to check if any updates are added to batch
+
     const events = snapshot.docs.map(doc => {
       const data = doc.data();
       let endDate = data.endDate;
+
+      // Convert Firestore Timestamp to Date object if needed
       if (endDate && endDate.toDate) {
         endDate = endDate.toDate();
+      } else if (typeof endDate === 'string') {
+        endDate = new Date(endDate); // Handle string format and convert to Date
       }
-      // If event has ended and status is not inactive, update it
-      if (endDate && now > endDate && data.status !== 'inactive') {
+
+      // If event has ended (endDate <= now) and status is not inactive, update it
+      if (endDate && now >= endDate && data.status !== 'inactive') {
         batch.update(doc.ref, { status: 'inactive' });
-        data.status = 'inactive';
+        hasBatchOperations = true; // Mark batch operation
+        data.status = 'inactive';  // Update local event data
       }
+
       return { id: doc.id, ...data };
     });
-    // Commit batch updates if any
-    if (!batch._ops || batch._ops.length > 0) {
+
+    // Commit batch updates only if there are any batch operations
+    if (hasBatchOperations) {
       await batch.commit();
     }
+
     res.status(200).json(events);
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch events', error });
   }
-}; 
+};
+
 
 export const getEventById = async (req, res) => {
   try {
