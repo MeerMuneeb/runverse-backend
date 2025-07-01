@@ -132,6 +132,7 @@ export async function registerUser(req, res) {
       status: 'inactive',
       paid: false,
       wooCustomerId,
+      type: 'free',
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
@@ -141,6 +142,7 @@ export async function registerUser(req, res) {
       email: userRecord.email,
       name: userRecord.displayName,
       wooCustomerId,
+      type: 'free',
       status: 'inactive',
     });
   } catch (err) {
@@ -397,7 +399,6 @@ export async function forgotPassword(req, res) {
   }
 }
 
-
 //GET ALL USERS
 export async function getAllUsers(req, res) {
   const db = admin.firestore(); // Moved inside the function
@@ -455,6 +456,7 @@ export async function getAllUsers(req, res) {
 
 export async function getUserById(req, res) {
   const db = admin.firestore();
+  const { saveHistory } = await import('./historyController.js'); // Dynamically import to avoid circular deps
 
   try {
     const { uid } = req.params;
@@ -466,6 +468,29 @@ export async function getUserById(req, res) {
     }
 
     const userData = userDoc.data();
+
+    // Ensure type field exists
+    if (!userData.type) {
+      userData.type = 'free';
+      await userRef.update({ type: 'free' });
+    }
+
+    // Premium user event check
+    if (userData.type === 'premium' && userData.eventId) {
+      const eventDoc = await db.collection('events').doc(userData.eventId).get();
+      if (eventDoc.exists) {
+        const eventData = eventDoc.data();
+        const now = new Date();
+        const eventEnd = eventData.endDate ? new Date(eventData.endDate) : null;
+        if (eventEnd && now > eventEnd) {
+          // Set user to free
+          userData.type = 'free';
+          await userRef.update({ type: 'free' });
+          // Save user history
+          await saveHistory(uid);
+        }
+      }
+    }
 
     // Fetch package info
     if (userData.packageId) {
@@ -549,7 +574,6 @@ export async function getUserById(req, res) {
     res.status(500).json({ error: 'Failed to fetch user' });
   }
 }
-
 
 // DELETE USER
 export async function deleteUser(req, res) {

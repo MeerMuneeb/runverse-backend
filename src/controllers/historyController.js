@@ -1,6 +1,6 @@
 import admin from '../config/firebase.js';
 
-export const saveHistory = async (uid) => {
+export const  saveHistory = async (uid) => {
   const db = admin.firestore();
   const userRef = db.collection('users').doc(uid);
   const historyRef = db.collection('userHistory').doc(uid).collection('history');
@@ -87,8 +87,7 @@ export const saveHistory = async (uid) => {
     'goal',
     'teamId',
     'completedMilestones',
-    'totalMilestones',
-    'eventId',
+    'totalMilestones'
   ];
 
   // Reset currentStats nested fields and paid field
