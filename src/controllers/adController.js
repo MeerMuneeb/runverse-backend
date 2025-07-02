@@ -310,7 +310,7 @@ export const getRandomAd = async (req, res) => {
         }
 
         const ads = adsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        let randomAd = null;
+        let validAds = [];
 
         // Log each ad being checked
         for (let ad of ads) {
@@ -336,13 +336,17 @@ export const getRandomAd = async (req, res) => {
                 continue;
             }
 
-            randomAd = ad;
-            break;
+            // Add valid ads to the list
+            validAds.push(ad);
         }
 
-        if (!randomAd) {
+        if (validAds.length === 0) {
             return res.status(404).json({ message: 'No valid active ads available at the moment' });
         }
+
+        // Randomly select an ad from the valid ads
+        const randomIndex = Math.floor(Math.random() * validAds.length);
+        const randomAd = validAds[randomIndex];
 
         await db.collection('ads').doc(randomAd.id).update({
             displayedToday: admin.firestore.FieldValue.increment(1),
@@ -358,6 +362,7 @@ export const getRandomAd = async (req, res) => {
         res.status(500).json({ message: 'Failed to fetch random ad', error });
     }
 };
+
 
 export const clickAd = async (req, res) => {
     try {
