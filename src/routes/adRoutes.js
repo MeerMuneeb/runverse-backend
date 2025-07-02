@@ -30,7 +30,7 @@ router.put('/update/:adId', upload.fields([{ name: 'logo' }, { name: 'image' }])
 router.delete('/delete/:adId', deleteAd);
 
 // Route to get a random ad
-router.get('/get-ad/random', getRandomAd);
+router.get('/get-random-ad/random', getRandomAd);
 
 // Route to count ad clicks
 router.post('/ad-click/:adId', clickAd);

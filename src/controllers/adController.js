@@ -215,12 +215,86 @@ export const deleteAd = async (req, res) => {
     }
 };
 
+// export const getRandomAd = async (req, res) => {
+//     try {
+//         const db = admin.firestore();
+//         const currentDate = new Date();
+
+//         // Accept adType as a query parameter (e.g., ?adType=banner or ?adType=full-image)
+//         const { adType } = req.query;
+
+//         let adsQuery = db.collection('ads').where('status', '==', 'active');
+//         if (adType) {
+//             adsQuery = adsQuery.where('adType', '==', adType);
+//         }
+
+//         const adsSnapshot = await adsQuery.get();
+
+//         if (adsSnapshot.empty) {
+//             return res.status(404).json({ message: 'No active ads found' });
+//         }
+
+//         // Select a random ad from active ads
+//         const ads = adsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+//         // Loop through ads to find one that meets the requirements
+//         let randomAd = null;
+//         for (let ad of ads) {
+//             const adExpirationDate = new Date(ad.endDate);
+//             const adCurrentDate = new Date();
+
+//             // Check if the ad's end date has passed, if so, mark it as inactive
+//             if (adExpirationDate < adCurrentDate) {
+//                 await db.collection('ads').doc(ad.id).update({ status: 'inactive' });
+//                 console.log(`Ad ${ad.id} expired, marked as inactive.`);
+//                 continue;  // Skip to the next ad
+//             }
+
+//             // Reset displayedToday if the updatedAt date is older than today
+//             if (new Date(ad.updatedAt) < currentDate.setHours(0, 0, 0, 0)) {
+//                 await db.collection('ads').doc(ad.id).update({ displayedToday: 0 });
+//                 console.log(`Ad ${ad.id} displayedToday reset.`);
+//             }
+
+//             if (ad.displayedToday >= ad.perDayDisplayCount) {
+//                 // Mark the ad as inactive in the DB
+//                 await db.collection('ads').doc(ad.id).update({ status: 'inactive' });
+//                 console.log(`Ad ${ad.id} exceeded perDayDisplayCount, marked as inactive.`);
+//                 continue;  // Skip to the next ad
+//             }
+
+//             // If the ad is valid, select it
+//             randomAd = ad;
+//             break;  // Exit the loop once a valid ad is selected
+//         }
+
+//         if (!randomAd) {
+//             return res.status(404).json({ message: 'No valid active ads available at the moment' });
+//         }
+
+//         // Increment the displayedToday and displayedThisMonth counters
+//         await db.collection('ads').doc(randomAd.id).update({
+//             displayedToday: admin.firestore.FieldValue.increment(1),
+//             displayedThisMonth: admin.firestore.FieldValue.increment(1),
+//             totalViews: admin.firestore.FieldValue.increment(1),
+//         });
+
+//         // Update the ad's last updated date
+//         await db.collection('ads').doc(randomAd.id).update({ updatedAt: currentDate });
+
+//         // Return the selected ad
+//         res.status(200).json(randomAd);
+//     } catch (error) {
+//         console.log("Error while fetching random ad:", error);
+//         res.status(500).json({ message: 'Failed to fetch random ad', error });
+//     }
+// };
+
 export const getRandomAd = async (req, res) => {
     try {
         const db = admin.firestore();
         const currentDate = new Date();
 
-        // Accept adType as a query parameter (e.g., ?adType=banner or ?adType=full-image)
         const { adType } = req.query;
 
         let adsQuery = db.collection('ads').where('status', '==', 'active');
@@ -229,60 +303,55 @@ export const getRandomAd = async (req, res) => {
         }
 
         const adsSnapshot = await adsQuery.get();
+        console.log("Ads snapshot size:", adsSnapshot.size); // Log number of ads fetched
 
         if (adsSnapshot.empty) {
             return res.status(404).json({ message: 'No active ads found' });
         }
 
-        // Select a random ad from active ads
         const ads = adsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        // Loop through ads to find one that meets the requirements
         let randomAd = null;
+
+        // Log each ad being checked
         for (let ad of ads) {
+            console.log(`Checking ad: ${ad.id}, expiration: ${ad.endDate}, displayedToday: ${ad.displayedToday}`);
+            
             const adExpirationDate = new Date(ad.endDate);
             const adCurrentDate = new Date();
 
-            // Check if the ad's end date has passed, if so, mark it as inactive
             if (adExpirationDate < adCurrentDate) {
                 await db.collection('ads').doc(ad.id).update({ status: 'inactive' });
                 console.log(`Ad ${ad.id} expired, marked as inactive.`);
-                continue;  // Skip to the next ad
+                continue;
             }
 
-            // Reset displayedToday if the updatedAt date is older than today
             if (new Date(ad.updatedAt) < currentDate.setHours(0, 0, 0, 0)) {
                 await db.collection('ads').doc(ad.id).update({ displayedToday: 0 });
                 console.log(`Ad ${ad.id} displayedToday reset.`);
             }
 
             if (ad.displayedToday >= ad.perDayDisplayCount) {
-                // Mark the ad as inactive in the DB
                 await db.collection('ads').doc(ad.id).update({ status: 'inactive' });
                 console.log(`Ad ${ad.id} exceeded perDayDisplayCount, marked as inactive.`);
-                continue;  // Skip to the next ad
+                continue;
             }
 
-            // If the ad is valid, select it
             randomAd = ad;
-            break;  // Exit the loop once a valid ad is selected
+            break;
         }
 
         if (!randomAd) {
             return res.status(404).json({ message: 'No valid active ads available at the moment' });
         }
 
-        // Increment the displayedToday and displayedThisMonth counters
         await db.collection('ads').doc(randomAd.id).update({
             displayedToday: admin.firestore.FieldValue.increment(1),
             displayedThisMonth: admin.firestore.FieldValue.increment(1),
             totalViews: admin.firestore.FieldValue.increment(1),
         });
 
-        // Update the ad's last updated date
         await db.collection('ads').doc(randomAd.id).update({ updatedAt: currentDate });
 
-        // Return the selected ad
         res.status(200).json(randomAd);
     } catch (error) {
         console.log("Error while fetching random ad:", error);

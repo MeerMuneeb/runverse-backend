@@ -92,7 +92,6 @@ export const getEvents = async (req, res) => {
   }
 };
 
-
 export const getEventById = async (req, res) => {
   try {
     const db = admin.firestore();
