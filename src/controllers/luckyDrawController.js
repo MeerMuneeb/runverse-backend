@@ -1,5 +1,6 @@
 import admin from '../config/firebase.js'; // Firebase Admin SDK
 import { getRandomParticipants } from '../utils/randomDraw.js'; // Utility to get random winners
+import { uploadToWordPress } from '../utils/uploadToWordPress.js';
 
 const COLLECTION = 'luckyDraws'; // Firebase collection for lucky draws
 
@@ -184,5 +185,121 @@ export const drawWinners = async (req, res) => {
   } catch (error) {
     console.error('Failed to draw winners:', error);
     res.status(500).json({ message: 'Failed to draw winners' });
+  }
+};
+
+// Add a reward to the lucky draw
+export const addReward = async (req, res) => {
+  try {
+    const db = admin.firestore();
+    const { eventId } = req.params;
+    const { title, position } = req.body;
+    let picture;
+
+    // Upload picture if file present
+    if (req.file) {
+      const imageUrl = await uploadToWordPress(req.file);
+      picture = imageUrl; // Save the image URL in picture
+      console.log('Reward image uploaded successfully:', imageUrl);
+    }
+
+    if (!title || !position || !picture) {
+      return res.status(400).json({ message: 'Invalid input data' });
+    }
+
+    const luckyDrawRef = db.collection(COLLECTION).where('eventId', '==', eventId);
+    const snapshot = await luckyDrawRef.get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({ message: 'Lucky draw not found for this event.' });
+    }
+
+    const luckyDraw = snapshot.docs[0];
+    const rewards = luckyDraw.data().rewards;
+
+    // Add the new reward to the rewards array
+    const newReward = { title, picture, position };
+    rewards.push(newReward);
+
+    // Update the lucky draw with the new rewards list
+    await luckyDraw.ref.update({ rewards });
+
+    res.status(200).json({ message: 'Reward added successfully', newReward });
+  } catch (error) {
+    console.error('Failed to add reward:', error);
+    res.status(500).json({ message: 'Failed to add reward' });
+  }
+};
+
+// Edit an existing reward in the lucky draw
+export const editReward = async (req, res) => {
+  try {
+    const db = admin.firestore();
+    const { eventId, rewardId } = req.params;
+    const { title, position } = req.body;
+    let picture;
+
+    // Upload picture if file present
+    if (req.file) {
+      const imageUrl = await uploadToWordPress(req.file);
+      picture = imageUrl; // Save the image URL in picture
+      console.log('Reward image uploaded successfully:', imageUrl);
+    }
+
+    const luckyDrawRef = db.collection(COLLECTION).where('eventId', '==', eventId);
+    const snapshot = await luckyDrawRef.get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({ message: 'Lucky draw not found for this event.' });
+    }
+
+    const luckyDraw = snapshot.docs[0];
+    const rewards = luckyDraw.data().rewards;
+
+    // Find the reward by position (or ID if you have one)
+    const rewardIndex = rewards.findIndex(reward => reward.position === parseInt(rewardId));
+    if (rewardIndex === -1) {
+      return res.status(404).json({ message: 'Reward not found.' });
+    }
+
+    // Update the reward details
+    rewards[rewardIndex] = { ...rewards[rewardIndex], title, picture, position };
+
+    // Update the lucky draw with the updated rewards
+    await luckyDraw.ref.update({ rewards });
+
+    res.status(200).json({ message: 'Reward updated successfully', updatedReward: rewards[rewardIndex] });
+  } catch (error) {
+    console.error('Failed to edit reward:', error);
+    res.status(500).json({ message: 'Failed to edit reward' });
+  }
+};
+
+// Delete a reward from the lucky draw
+export const deleteReward = async (req, res) => {
+  try {
+    const db = admin.firestore();
+    const { eventId, rewardId } = req.params;
+
+    const luckyDrawRef = db.collection(COLLECTION).where('eventId', '==', eventId);
+    const snapshot = await luckyDrawRef.get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({ message: 'Lucky draw not found for this event.' });
+    }
+
+    const luckyDraw = snapshot.docs[0];
+    let rewards = luckyDraw.data().rewards;
+
+    // Remove the reward by position (or ID if you have one)
+    rewards = rewards.filter(reward => reward.position !== parseInt(rewardId));
+
+    // Update the lucky draw with the modified rewards list
+    await luckyDraw.ref.update({ rewards });
+
+    res.status(200).json({ message: 'Reward deleted successfully' });
+  } catch (error) {
+    console.error('Failed to delete reward:', error);
+    res.status(500).json({ message: 'Failed to delete reward' });
   }
 };

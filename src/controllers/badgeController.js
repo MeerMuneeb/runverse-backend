@@ -93,7 +93,6 @@ export const updateBadge = async (req, res) => {
     }
 };
 
-
 export const deleteBadge = async (req, res) => {
     try {
         const db = admin.firestore();
@@ -104,3 +103,4 @@ export const deleteBadge = async (req, res) => {
         res.status(500).json({ message: 'Failed to delete badge', error });
     }
 };
+

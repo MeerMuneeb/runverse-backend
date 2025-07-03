@@ -5,7 +5,11 @@ import {
   joinLuckyDraw,
   buyEntry,
   drawWinners,
+  addReward,
+  editReward,
+  deleteReward
 } from '../controllers/luckyDrawController.js';
+import upload from '../middleware/upload.js';
 
 const router = express.Router();
 
@@ -13,7 +17,7 @@ const router = express.Router();
 router.post('/create', createLuckyDraw);
 
 // Route to update the draw date for an event's lucky draw
-router.put('/:eventId/update', updateLuckyDraw);
+router.put('/update/:eventId', updateLuckyDraw);
 
 // Route for users to join a lucky draw
 router.post('/join', joinLuckyDraw);
@@ -22,6 +26,15 @@ router.post('/join', joinLuckyDraw);
 router.post('/buy-entry', buyEntry);
 
 // Route for admins to draw winners
-router.post('/:eventId/draw', drawWinners);
+router.post('/draw/:eventId', drawWinners);
+
+
+router.post('/add-reward/:eventId', upload.single('picture'), addReward);
+
+// Route to edit a reward in the lucky draw
+router.put('/edit-reward/:eventId/:rewardId', upload.single('picture'), editReward);
+
+// Route to delete a reward from the lucky draw
+router.delete('/delete-reward/:eventId/:rewardId', deleteReward);
 
 export default router;

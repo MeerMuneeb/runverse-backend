@@ -21,6 +21,7 @@ import walletRoutes from './routes/walletRoutes.js'; // Import wallet routes
 import eventRoutes from './routes/eventRoutes.js'; // Import event routes
 import blockchainRoutes from './routes/blockchainRoutes.js'; // Import blockchain routes
 import adRoutes from './routes/adRoutes.js'; // Import ad routes
+import luckyDrawRoutes from './routes/luckyDrawRoutes.js'; // Import lucky draw routes
 
 const app = express();
 
@@ -52,6 +53,8 @@ app.use('/api/wallet', walletRoutes); // Add wallet routes
 app.use('/api/events', eventRoutes); // Add event routes
 app.use('/api/blockchain', blockchainRoutes); // Add event routes
 app.use('/api/ads', adRoutes); // Add event routes
+app.use('/api/luckydraws', luckyDrawRoutes); // Add lucky draw routes
+
 
 app.get('/', (req, res) => {
   res.send('Welcome to the Firebase Auth API!');
