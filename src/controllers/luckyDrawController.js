@@ -420,3 +420,26 @@ export const getLuckyDrawHistory = async (req, res) => {
     res.status(500).json({ message: 'Failed to get lucky draw history' });
   }
 };
+
+// Delete a lucky draw by eventId
+export const deleteLuckyDraw = async (req, res) => {
+  try {
+    const db = admin.firestore();
+    const { eventId } = req.params;
+
+    const luckyDrawRef = db.collection(COLLECTION).where('eventId', '==', eventId);
+    const snapshot = await luckyDrawRef.get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({ message: 'Lucky draw not found for this event.' });
+    }
+
+    const luckyDraw = snapshot.docs[0];
+    await luckyDraw.ref.delete();
+
+    res.status(200).json({ message: 'Lucky draw deleted successfully' });
+  } catch (error) {
+    console.error('Failed to delete lucky draw:', error);
+    res.status(500).json({ message: 'Failed to delete lucky draw' });
+  }
+};

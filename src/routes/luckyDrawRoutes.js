@@ -10,7 +10,8 @@ import {
   deleteReward,
   getLuckyDraw,
   getAllLuckyDraws,
-  getLuckyDrawHistory
+  getLuckyDrawHistory,
+  deleteLuckyDraw
 } from '../controllers/luckyDrawController.js';
 import upload from '../middleware/upload.js';
 
@@ -27,6 +28,9 @@ router.get('/all', getAllLuckyDraws);
 
 // Route to get lucky draw history (completed/inactive draws)
 router.get('/history', getLuckyDrawHistory);
+
+// Route to delete a lucky draw by eventId
+router.delete('/delete/:eventId', deleteLuckyDraw);
 
 // Route to update the draw date for an event's lucky draw
 router.put('/update/:eventId', updateLuckyDraw);
