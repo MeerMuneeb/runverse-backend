@@ -30,6 +30,7 @@ router.get('/history', getLuckyDrawHistory);
 
 // Route to update the draw date for an event's lucky draw
 router.put('/update/:eventId', updateLuckyDraw);
+router.patch('/update/:eventId', updateLuckyDraw);
 
 // Route for users to join a lucky draw
 router.post('/join', joinLuckyDraw);
