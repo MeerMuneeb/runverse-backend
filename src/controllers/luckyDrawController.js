@@ -175,10 +175,39 @@ export const drawWinners = async (req, res) => {
     // Select random winners
     const winners = getRandomParticipants(participants, numWinners);
 
-    // Save the winners to the lucky draw history (you can also create a separate collection for history)
+    // Prepare winners with position and reward info
+    const rewards = luckyDraw.data().rewards || [];
+    const drawDate = luckyDraw.data().drawDate?.toDate?.() || new Date();
+    const formattedDrawDate = drawDate.toISOString().split('T')[0];
+
+    const winnersWithDetails = winners.map((userId, idx) => ({
+      userId,
+      position: idx + 1,
+      reward: rewards[idx]?.title || null,
+      drawDate: formattedDrawDate,
+    }));
+
+    // Prepare participants in the required format
+    const participantsFormatted = participants.map(userId => ({ userId }));
+
+    // Save to history collection
+    await db.collection('luckyDrawHistory').add({
+      eventId,
+      winners: winnersWithDetails,
+      participants: participantsFormatted,
+      drawDate: formattedDrawDate,
+      numWinners: luckyDraw.data().numWinners,
+      maxEntries: luckyDraw.data().maxEntries,
+      entryPrice: luckyDraw.data().entryPriceTokens || luckyDraw.data().entryPriceCurrency || null,
+      createdAt: luckyDraw.data().createdAt?.toDate?.().toISOString().split('T')[0] || null,
+      updatedAt: new Date().toISOString().split('T')[0],
+    });
+
+    // Deactivate the lucky draw and save winners
     await luckyDraw.ref.update({
-      active: false, // Deactivate the lucky draw after the draw is complete
-      winners,
+      active: false,
+      winners: winnersWithDetails,
+      updatedAt: admin.firestore.Timestamp.now(),
     });
 
     res.status(200).json({ message: 'Lucky draw completed successfully', winners });
@@ -301,5 +330,70 @@ export const deleteReward = async (req, res) => {
   } catch (error) {
     console.error('Failed to delete reward:', error);
     res.status(500).json({ message: 'Failed to delete reward' });
+  }
+};
+
+// Get a lucky draw by eventId
+export const getLuckyDraw = async (req, res) => {
+  try {
+    const db = admin.firestore();
+    const { eventId } = req.params;
+
+    const luckyDrawRef = db.collection(COLLECTION).where('eventId', '==', eventId);
+    const snapshot = await luckyDrawRef.get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({ message: 'Lucky draw not found for this event.' });
+    }
+
+    const luckyDraw = snapshot.docs[0];
+    res.status(200).json({ id: luckyDraw.id, ...luckyDraw.data() });
+  } catch (error) {
+    console.error('Failed to get lucky draw:', error);
+    res.status(500).json({ message: 'Failed to get lucky draw' });
+  }
+};
+
+// Get all lucky draws
+export const getAllLuckyDraws = async (req, res) => {
+  try {
+    const db = admin.firestore();
+    const snapshot = await db.collection(COLLECTION).get();
+
+    if (snapshot.empty) {
+      return res.status(200).json([]);
+    }
+
+    const luckyDraws = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    res.status(200).json(luckyDraws);
+  } catch (error) {
+    console.error('Failed to get all lucky draws:', error);
+    res.status(500).json({ message: 'Failed to get all lucky draws' });
+  }
+};
+
+// Get all lucky draws (history)
+export const getLuckyDrawHistory = async (req, res) => {
+  try {
+    const db = admin.firestore();
+    const snapshot = await db.collection('luckyDrawHistory').get();
+
+    if (snapshot.empty) {
+      return res.status(200).json([]);
+    }
+
+    const history = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    res.status(200).json(history);
+  } catch (error) {
+    console.error('Failed to get lucky draw history:', error);
+    res.status(500).json({ message: 'Failed to get lucky draw history' });
   }
 };

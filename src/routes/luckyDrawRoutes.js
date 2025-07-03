@@ -7,7 +7,10 @@ import {
   drawWinners,
   addReward,
   editReward,
-  deleteReward
+  deleteReward,
+  getLuckyDraw,
+  getAllLuckyDraws,
+  getLuckyDrawHistory
 } from '../controllers/luckyDrawController.js';
 import upload from '../middleware/upload.js';
 
@@ -15,6 +18,15 @@ const router = express.Router();
 
 // Route to create a lucky draw for an event
 router.post('/create', createLuckyDraw);
+
+// Route to get a single lucky draw by eventId
+router.get('/get/:eventId', getLuckyDraw);
+
+// Route to get all lucky draws
+router.get('/all', getAllLuckyDraws);
+
+// Route to get lucky draw history (completed/inactive draws)
+router.get('/history', getLuckyDrawHistory);
 
 // Route to update the draw date for an event's lucky draw
 router.put('/update/:eventId', updateLuckyDraw);
