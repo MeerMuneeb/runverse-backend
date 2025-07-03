@@ -269,7 +269,6 @@ export const addReward = async (req, res) => {
   }
 };
 
-
 // Edit an existing reward in the lucky draw
 export const editReward = async (req, res) => {
   try {
@@ -285,6 +284,7 @@ export const editReward = async (req, res) => {
       console.log('Reward image uploaded successfully:', imageUrl);
     }
 
+    // Fetch the lucky draw document for the given eventId
     const luckyDrawRef = db.collection(COLLECTION).where('eventId', '==', eventId);
     const snapshot = await luckyDrawRef.get();
 
@@ -293,21 +293,30 @@ export const editReward = async (req, res) => {
     }
 
     const luckyDraw = snapshot.docs[0];
-    const rewards = luckyDraw.data().rewards;
+    let rewards = luckyDraw.data().rewards || [];  // Ensure rewards is initialized as an empty array if undefined
 
-    // Find the reward by position (or ID if you have one)
-    const rewardIndex = rewards.findIndex(reward => reward.position === parseInt(rewardId));
+    // Find the reward by rewardId (assuming it's the unique identifier for each reward)
+    const rewardIndex = rewards.findIndex(reward => reward.id === rewardId); // Use 'id' as the unique identifier
+
     if (rewardIndex === -1) {
       return res.status(404).json({ message: 'Reward not found.' });
     }
 
     // Update the reward details
-    rewards[rewardIndex] = { ...rewards[rewardIndex], title, picture, position };
+    rewards[rewardIndex] = {
+      ...rewards[rewardIndex],
+      title: title || rewards[rewardIndex].title,
+      picture: picture || rewards[rewardIndex].picture,
+      position: position || rewards[rewardIndex].position,
+    };
 
-    // Update the lucky draw with the updated rewards
+    // Update the lucky draw with the updated rewards array
     await luckyDraw.ref.update({ rewards });
 
-    res.status(200).json({ message: 'Reward updated successfully', updatedReward: rewards[rewardIndex] });
+    res.status(200).json({
+      message: 'Reward updated successfully',
+      updatedReward: rewards[rewardIndex],
+    });
   } catch (error) {
     console.error('Failed to edit reward:', error);
     res.status(500).json({ message: 'Failed to edit reward' });
