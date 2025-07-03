@@ -295,8 +295,8 @@ export const editReward = async (req, res) => {
     const luckyDraw = snapshot.docs[0];
     let rewards = luckyDraw.data().rewards || [];  // Ensure rewards is initialized as an empty array if undefined
 
-    // Find the reward by rewardId (assuming it's the unique identifier for each reward)
-    const rewardIndex = rewards.findIndex(reward => reward.id === rewardId); // Use 'id' as the unique identifier
+    // Find the reward by array index (rewardId is the index)
+    const rewardIndex = parseInt(rewardId, 10);
 
     if (rewardIndex === -1) {
       return res.status(404).json({ message: 'Reward not found.' });
