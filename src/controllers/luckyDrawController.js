@@ -50,7 +50,7 @@ export const updateLuckyDraw = async (req, res) => {
   try {
     const db = admin.firestore();
     const { eventId } = req.params;
-    const { drawDate } = req.body;
+    const updateFields = req.body;
 
     const luckyDrawRef = db.collection(COLLECTION).where('eventId', '==', eventId);
     const snapshot = await luckyDrawRef.get();
@@ -60,10 +60,15 @@ export const updateLuckyDraw = async (req, res) => {
     }
 
     const luckyDraw = snapshot.docs[0];
-    await luckyDraw.ref.update({
-      drawDate: admin.firestore.Timestamp.fromDate(new Date(drawDate)),
-      updatedAt: admin.firestore.Timestamp.now(),
-    });
+
+    // If drawDate is present, convert to Firestore Timestamp
+    if (updateFields.drawDate) {
+      updateFields.drawDate = admin.firestore.Timestamp.fromDate(new Date(updateFields.drawDate));
+    }
+
+    updateFields.updatedAt = admin.firestore.Timestamp.now();
+
+    await luckyDraw.ref.update(updateFields);
 
     res.status(200).json({ message: 'Lucky draw updated successfully' });
   } catch (error) {
