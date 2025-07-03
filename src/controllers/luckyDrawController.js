@@ -339,8 +339,12 @@ export const deleteReward = async (req, res) => {
     const luckyDraw = snapshot.docs[0];
     let rewards = luckyDraw.data().rewards;
 
-    // Remove the reward by position (or ID if you have one)
-    rewards = rewards.filter(reward => reward.position !== parseInt(rewardId));
+    // Remove the reward by index (rewardId is the index)
+    const index = parseInt(rewardId, 10);
+    if (isNaN(index) || index < 0 || index >= rewards.length) {
+      return res.status(404).json({ message: 'Reward not found.' });
+    }
+    rewards.splice(index, 1);
 
     // Update the lucky draw with the modified rewards list
     await luckyDraw.ref.update({ rewards });
