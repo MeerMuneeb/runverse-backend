@@ -230,26 +230,30 @@ export const addReward = async (req, res) => {
     const { title, position } = req.body;
     let picture;
 
-    // Upload picture if file present
+    // Upload picture if file is present
     if (req.file) {
       const imageUrl = await uploadToWordPress(req.file);
       picture = imageUrl; // Save the image URL in picture
       console.log('Reward image uploaded successfully:', imageUrl);
     }
 
+    // Validate input data
     if (!title || !position || !picture) {
       return res.status(400).json({ message: 'Invalid input data' });
     }
 
+    // Fetch the lucky draw document by eventId
     const luckyDrawRef = db.collection(COLLECTION).where('eventId', '==', eventId);
+    console.log('Fetching lucky draw for eventId:', luckyDrawRef.get());
     const snapshot = await luckyDrawRef.get();
 
     if (snapshot.empty) {
       return res.status(404).json({ message: 'Lucky draw not found for this event.' });
     }
 
+    // Get the lucky draw document and its rewards
     const luckyDraw = snapshot.docs[0];
-    const rewards = luckyDraw.data().rewards;
+    let rewards = luckyDraw.data().rewards || [];  // Ensure rewards is initialized as an empty array if undefined
 
     // Add the new reward to the rewards array
     const newReward = { title, picture, position };
@@ -264,6 +268,7 @@ export const addReward = async (req, res) => {
     res.status(500).json({ message: 'Failed to add reward' });
   }
 };
+
 
 // Edit an existing reward in the lucky draw
 export const editReward = async (req, res) => {
