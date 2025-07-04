@@ -262,7 +262,7 @@ export const buyEntry = async (req, res) => {
         paymentIntentId: paymentIntent.id,
       });
     }
-    
+
     else if (paymentMethod === 'tokens') {
       // Handle wallet payment method (using tokens)
       const walletRef = db.collection('wallets').doc(userId);
@@ -306,8 +306,6 @@ export const buyEntry = async (req, res) => {
     res.status(500).json({ message: 'Failed to buy entry' });
   }
 };
-
-
 
 // Admin draws the lucky draw (random selection of winners)
 export const drawWinners = async (req, res) => {
