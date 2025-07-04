@@ -136,15 +136,16 @@ export async function getUniqueDistances(req, res) {
             return res.status(200).json([]);
         }
 
-        const distances = new Set();
+        // Use a Map to ensure unique distances and store packageId
+        const distanceMap = new Map();
         snapshot.forEach(doc => {
             const data = doc.data();
-            if (data.distance) {
-                distances.add(data.distance);
+            if (data.distance && !distanceMap.has(data.distance)) {
+                distanceMap.set(data.distance, { distance: data.distance, packageId: doc.id });
             }
         });
 
-        res.status(200).json([...distances]);
+        res.status(200).json([...distanceMap.values()]);
     } catch (error) {
         console.error('Error fetching distances:', error);
         res.status(500).json({ error: 'Failed to fetch distances' });

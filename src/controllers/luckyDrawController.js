@@ -19,6 +19,9 @@ export const createLuckyDraw = async (req, res) => {
       numWinners,
     } = req.body;
 
+    // Convert entryPriceCurrency to a number if it's a string
+    const parsedEntryPriceCurrency = typeof entryPriceCurrency === 'string' ? Number(entryPriceCurrency) : entryPriceCurrency;
+
     const existingDraw = await db.collection(COLLECTION).where('eventId', '==', eventId).get();
     if (!existingDraw.empty) {
       return res.status(400).json({ message: 'Lucky draw already exists for this event.' });
@@ -217,12 +220,32 @@ export const buyEntry = async (req, res) => {
       return res.status(404).json({ message: 'User not found.' });
     }
 
+    // Accessing data correctly
     const luckyDraw = luckyDrawSnap.docs[0].data();
-    const { maxEntries, participants, entryPriceCurrency, entryPrice } = luckyDraw.data();
+    const { maxEntries, participants, entryPriceCurrency, entryPriceTokens } = luckyDraw;
+
+    // Log the values of entryPriceCurrency, entryPriceTokens, and entryCount for debugging
+    console.log('Entry Price Currency:', entryPriceCurrency, 'Entry Price Tokens:', entryPriceTokens, 'Entry Count:', entryCount);
+
+    // Ensure entryPriceCurrency and entryPriceTokens are valid numbers
+    const parsedEntryPriceCurrency = parseFloat(entryPriceCurrency);
+    const parsedEntryPriceTokens = parseFloat(entryPriceTokens);
+    const parsedEntryCount = parseInt(entryCount, 10);
+
+    console.log('Parsed Entry Price Currency:', parsedEntryPriceCurrency, 'Parsed Entry Price Tokens:', parsedEntryPriceTokens, 'Parsed Entry Count:', parsedEntryCount);
+
+    // Check if entryPriceCurrency, entryPriceTokens, or entryCount is NaN
+    if (isNaN(parsedEntryPriceCurrency) && isNaN(parsedEntryPriceTokens)) {
+      return res.status(400).json({ message: 'Invalid entry price' });
+    }
+
+    if (isNaN(parsedEntryCount)) {
+      return res.status(400).json({ message: 'Invalid entry count' });
+    }
 
     // Check if the user has enough entries or if they exceed max entries
     const userEntries = participants.filter(user => user === userId).length;
-    if (userEntries + entryCount > maxEntries) {
+    if (userEntries + parsedEntryCount > maxEntries) {
       return res.status(400).json({ message: 'You cannot buy more than the maximum entries allowed.' });
     }
 
@@ -242,15 +265,15 @@ export const buyEntry = async (req, res) => {
         { apiVersion: '2024-04-10' }
       );
 
-      // Create PaymentIntent for Stripe
+      // Create PaymentIntent for Stripe using entryPriceCurrency
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: entryPrice * entryCount, // Total price for the entries
-        currency: entryPriceCurrency,   // The currency you are using
+        amount: parsedEntryPriceCurrency * parsedEntryCount, // Total price for the entries
+        currency: 'usd',   // The currency you are using, ensure it matches entryPriceCurrency if needed
         customer: customerId,
         metadata: {
           firebaseUID: userId,
           eventId,
-          entryCount,
+          entryCount: parsedEntryCount,
         },
       });
 
@@ -264,12 +287,12 @@ export const buyEntry = async (req, res) => {
     }
 
     else if (paymentMethod === 'tokens') {
-      // Handle wallet payment method (using tokens)
+      // Handle wallet payment method (using entryPriceTokens)
       const walletRef = db.collection('wallets').doc(userId);
       const walletSnap = await walletRef.get();
       const wallet = walletSnap.data();
 
-      if (!wallet || wallet.balance < entryPrice * entryCount) {
+      if (!wallet || wallet.balance < parsedEntryPriceTokens * parsedEntryCount) {
         return res.status(400).json({ message: 'Insufficient wallet balance' });
       }
 
@@ -277,20 +300,20 @@ export const buyEntry = async (req, res) => {
       const createdAt = admin.firestore.Timestamp.now();
       const newTransaction = {
         type: 'debit',
-        amount: entryPrice * entryCount,
+        amount: parsedEntryPriceTokens * parsedEntryCount,
         description: `Lucky Draw entry purchase: ${eventId}`,
         eventId,
         createdAt,
       };
 
       await walletRef.update({
-        balance: admin.firestore.FieldValue.increment(-(entryPrice * entryCount)),
+        balance: admin.firestore.FieldValue.increment(-(parsedEntryPriceTokens * parsedEntryCount)),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         transactions: admin.firestore.FieldValue.arrayUnion(newTransaction),
       });
 
       // Add the user's new entries to the participants
-      for (let i = 0; i < entryCount; i++) {
+      for (let i = 0; i < parsedEntryCount; i++) {
         participants.push(userId);
       }
 
