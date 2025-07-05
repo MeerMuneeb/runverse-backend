@@ -84,24 +84,24 @@ export const withdrawTokens = async (req, res) => {
       const walletDoc = await transaction.get(walletRef);
       if (!walletDoc.exists) throw new Error('Wallet not found');
 
-      const currentBalance = walletDoc.data().balance || 0;
-      if (currentBalance < amount) throw new Error('Insufficient balance');
+      // const currentBalance = walletDoc.data().balance || 0;
+      // if (currentBalance < amount) throw new Error('Insufficient balance');
 
-      const newBalance = currentBalance - amount;
+      // const newBalance = currentBalance - amount;
 
       transaction.update(walletRef, {
-        balance: newBalance,
+        // balance: newBalance, // Commented out: do not deduct balance yet
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         transactions: admin.firestore.FieldValue.arrayUnion({
           type: 'debit',
           amount,
-          description: description || 'Tokens withdrawn',
+          description: (description ? description + ' - ' : '') + 'Pending for approval',
           timestamp: new Date(),
         }),
       });
     });
 
-    res.json({ message: 'Tokens withdrawn successfully' });
+    res.json({ message: 'Withdrawal request submitted and pending approval' });
   } catch (error) {
     console.error('Withdraw tokens error:', error);
     res.status(500).json({ error: error.message || 'Internal Server Error' });
