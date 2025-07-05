@@ -123,12 +123,15 @@ export async function deletePackage(req, res) {
 
 export async function getUniqueDistances(req, res) {
     const db = admin.firestore();
-    const { type } = req.query; // Accept type as a query parameter
+    const { type, eventId } = req.query; // Accept type and eventId as query parameters
 
     try {
         let query = db.collection('packages').where('status', '==', 'active');
         if (type && (type === 'team' || type === 'individual')) {
             query = query.where('type', '==', type);
+        }
+        if (eventId) {
+            query = query.where('eventId', '==', eventId);
         }
 
         const snapshot = await query.get();

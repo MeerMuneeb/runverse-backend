@@ -617,3 +617,139 @@ export const deleteLuckyDraw = async (req, res) => {
     res.status(500).json({ message: 'Failed to delete lucky draw' });
   }
 };
+
+// Get a user's lucky draws filtered by eventId (optional)
+// /api/luckydraws/get-user-luckydraws/:userId?eventId=event123
+// Get a user's lucky draws filtered by eventId (optional), and sorted by events if eventId is not provided
+export const getUserLuckyDraws = async (req, res) => {
+  try {
+    const db = admin.firestore();
+    const { userId } = req.params; // Assuming `userId` is passed in the URL
+    const { eventId } = req.query; // Get eventId from query params (optional)
+
+    if (!userId) {
+      return res.status(400).json({ message: 'userId is required' });
+    }
+
+    // Build the query for lucky draws based on eventId if provided
+    let luckyDrawQuery = db.collection(COLLECTION).where('participants', 'array-contains', userId);
+
+    if (eventId) {
+      luckyDrawQuery = luckyDrawQuery.where('eventId', '==', eventId);
+    }
+
+    const snapshot = await luckyDrawQuery.get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({ message: 'No lucky draws found for this user' });
+    }
+
+    const luckyDraws = snapshot.docs.map(doc => doc.data());
+
+    // Gather the event details and structure the response
+    const response = [];
+
+    for (const luckyDraw of luckyDraws) {
+      const { eventId, participants, drawDate, maxEntries } = luckyDraw;
+
+      // Calculate user current entries for the lucky draw
+      const userCurrentEntries = participants.filter(uid => uid === userId).length;
+
+      // Fetch the event details
+      const eventRef = db.collection('events').doc(eventId);
+      const eventSnapshot = await eventRef.get();
+
+      if (!eventSnapshot.exists) {
+        continue; // If event not found, skip this lucky draw
+      }
+
+      const event = eventSnapshot.data();
+      const eventName = event.name || 'Unknown Event';
+
+      // Add the relevant details to the response
+      response.push({
+        drawDate: drawDate?.toDate() || 'N/A',
+        userCurrentEntries,
+        maxEntries,
+        eventName,
+        eventId,
+      });
+    }
+
+    // Sort by eventName (you can modify the sorting criteria as needed)
+    response.sort((a, b) => a.eventName.localeCompare(b.eventName));
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Failed to get user lucky draws:', error);
+    res.status(500).json({ message: 'Failed to get user lucky draws' });
+  }
+};
+
+// Get user's lucky draw history with event details
+export const getUserLuckyDrawHistory = async (req, res) => {
+  try {
+    const db = admin.firestore();
+    const { userId } = req.params; // Assuming `userId` is passed in the URL
+    const snapshot = await db.collection('luckyDrawHistory').get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({ message: 'No lucky draw history found' });
+    }
+
+    const history = snapshot.docs.map(doc => doc.data());
+    const userHistory = [];
+
+    for (const draw of history) {
+      const { eventId, winners, participants, drawDate } = draw;
+
+      // Fetch event name
+      const eventRef = db.collection('events').doc(eventId);
+      const eventSnapshot = await eventRef.get();
+
+      if (!eventSnapshot.exists) {
+        continue; // Skip if event not found
+      }
+
+      const event = eventSnapshot.data();
+      const eventName = event.name || 'Unknown Event';
+
+      // Check if user won and their position
+      const userWinner = winners.find(winner => winner.userId === userId);
+      const userStatus = userWinner ? 'won' : 'lose';
+      const userReward = userWinner ? userWinner.reward : null;
+      const userPosition = userWinner ? userWinner.position : null;
+
+      // If user is a participant and did not win, add them to history
+      if (!userWinner && participants.some(p => p.userId === userId)) {
+        userHistory.push({
+          eventId,
+          eventName,
+          status: 'lose',
+          reward: null,
+          drawDate: drawDate,
+          position: null,
+        });
+      } else if (userWinner) {
+        userHistory.push({
+          eventId,
+          eventName,
+          status: userStatus,
+          reward: userReward,
+          drawDate: drawDate,
+          position: userPosition,
+        });
+      }
+    }
+
+    if (userHistory.length === 0) {
+      return res.status(404).json({ message: 'User has no history in the lucky draws' });
+    }
+
+    res.status(200).json(userHistory);
+  } catch (error) {
+    console.error('Failed to get user lucky draw history:', error);
+    res.status(500).json({ message: 'Failed to get user lucky draw history' });
+  }
+};
+

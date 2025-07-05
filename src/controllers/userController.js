@@ -367,24 +367,46 @@ export async function forgotPassword(req, res) {
 
     // Send the link via email
     const mailOptions = {
-      from: `MBS Runverse <${process.env.EMAIL_USER}>`,  // Set sender name
+      from: `Runverse <${process.env.EMAIL_USER}>`,  // Set sender name
       to: email,
       subject: "Password Reset",
       html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #333;">
-          <h2 style="color: #0066cc;">Password Reset Request</h2>
-          <p>Dear User,</p>
-          <p>We received a request to reset your password for your MBS Runverse account. If you made this request, please click the link below to reset your password:</p>
-          <a href="${resetLink}" style="display: inline-block; padding: 10px 20px; color: #fff; background-color: #0066cc; text-decoration: none; border-radius: 5px;">Reset Password</a>
-          <p>If you did not request a password reset, please ignore this email. Your account remains secure.</p>
-          <p>If the button doesn't work, copy and paste the following link into your browser:</p>
-          <p><a href="${resetLink}">${resetLink}</a></p>
-          <br>
-          <p>Thank you,</p>
-          <p><strong>The MBS Runverse Team</strong></p>
-          <hr style="border: none; height: 1px; background-color: #ddd;">
-          <p style="font-size: 0.9em; color: #666;">If you have any questions or need assistance, feel free to reply to this email.</p>
-        </div>
+      <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #333;">
+        <h2 style="color: #0066cc;">Password Reset Request</h2>
+        <p>Dear User,</p>
+        <p>We received a request to reset your password for your Runverse account. If you made this request, please click the link below to reset your password:</p>
+        
+        <br>
+        
+        <p><strong>Password Requirements:</strong></p>
+        <ul>
+          <li>At least 8 characters long</li>
+          <li>Includes at least one uppercase letter</li>
+          <li>Includes at least one number</li>
+          <li>Includes at least one special character (e.g., !@#$%^&*)</li>
+        </ul>
+
+        <br>
+
+        <!-- WARNING in BOLD RED -->
+        <p style="color: red; font-weight: bold;">
+          WARNING: YOU WON'T BE ABLE TO LOGIN TO THE APP IF YOU DON'T FOLLOW THESE INSTRUCTIONS WHEN RESETTING YOUR PASSWORD.
+        </p>
+
+        <br>
+        
+        <a href="${resetLink}" style="display: inline-block; padding: 10px 20px; color: #fff; background-color: #0066cc; text-decoration: none; border-radius: 5px;">Reset Password</a>
+        <p>If you did not request a password reset, please ignore this email. Your account remains secure.</p>
+        <p>If the button doesn't work, copy and paste the following link into your browser:</p>
+        <p><a href="${resetLink}">${resetLink}</a></p>
+        
+        <p>Thank you,</p>
+        <p><strong>The Runverse Team</strong></p>
+        
+        <hr style="border: none; height: 1px; background-color: #ddd;">
+        <p style="font-size: 0.9em; color: #666;">If you have any questions or need assistance, feel free to reply to this email.</p>
+      </div>
+
       `,
     };
 

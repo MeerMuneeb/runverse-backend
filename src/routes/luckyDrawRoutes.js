@@ -11,7 +11,9 @@ import {
   getLuckyDraw,
   getAllLuckyDraws,
   getLuckyDrawHistory,
-  deleteLuckyDraw
+  deleteLuckyDraw,
+  getUserLuckyDraws,
+  getUserLuckyDrawHistory
 } from '../controllers/luckyDrawController.js';
 import upload from '../middleware/upload.js';
 
@@ -54,5 +56,16 @@ router.patch('/edit-reward/:eventId/:rewardId', upload.single('picture'), editRe
 
 // Route to delete a reward from the lucky draw
 router.delete('/delete-reward/:eventId/:rewardId', deleteReward);
+
+// Route to get a user's lucky draws filtered by eventId (optional)
+// /api/luckydraws/get-user-luckydraws/:userId?eventId=event123
+// Get a user's lucky draws filtered by eventId (optional), and sorted by events if eventId is not provided
+router.get('/get-user-luckydraws/:userId', getUserLuckyDraws);
+
+// Route to get a user's lucky draw history
+// /api/luckydraws/get-user-luckydraw-history/:userId
+router.get('/get-user-luckydraw-history/:userId', getUserLuckyDrawHistory);
+
+
 
 export default router;
