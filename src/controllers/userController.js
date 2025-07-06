@@ -133,8 +133,38 @@ export async function registerUser(req, res) {
       paid: false,
       wooCustomerId,
       type: 'free',
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      fcmToken: userRecord.fcmToken || ''
     });
+
+    const fcmToken = userRecord.fcmToken; // You should store this token during the registration process
+    if (fcmToken) {
+      await sendPushNotification(fcmToken, 'Welcome to Runverse!', 'Your account has been created successfully. As part of your registration, a store account has also been created for you. You can visit and access the Runverse store anytime directly from the app to explore exclusive products and offers.');
+    }
+
+    // Send Email Notification for Registration
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Welcome to Runverse',
+      html: `
+      <div style="font-family: Arial, sans-serif; color: #333;">
+        <h2>Welcome to Runverse!</h2>
+        <p>Thank you for registering at Runverse. We are excited to have you on board.</p>
+        <p>
+        As part of your registration, a store account has also been created for you. 
+        You can visit and access the Runverse store anytime directly from the app to explore exclusive products and offers.
+        </p>
+        <p>
+        If you have any questions or need assistance, feel free to reply to this email.
+        </p>
+        <br>
+        <p>Best regards,<br><strong>The Runverse Team</strong></p>
+      </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
 
     return res.status(201).json({
       message: 'User registered successfully',
@@ -182,6 +212,19 @@ export async function loginUser(req, res) {
     } catch (tokenError) {
       console.error('Token allocation failed:', tokenError);
       // Optionally handle error or continue
+    }
+
+    // Try to get fcmToken from response.data, otherwise fetch from Firestore
+    let fcmToken = response.data.fcmToken;
+    if (!fcmToken) {
+      const db = admin.firestore();
+      const userDoc = await db.collection('users').doc(localId).get();
+      if (userDoc.exists) {
+      fcmToken = userDoc.data().fcmToken || '';
+      }
+    }
+    if (fcmToken) {
+      await sendPushNotification(fcmToken, 'Login Successful', 'Welcome back to Runverse!');
     }
 
     return res.status(200).json({
@@ -262,6 +305,35 @@ export const oauthLogin = async (req, res) => {
       }
 
       await userRef.set(userData);
+
+      const fcmToken = userRecord.fcmToken; // You should store this token during the registration process
+    if (fcmToken) {
+      await sendPushNotification(fcmToken, 'Welcome to Runverse!', 'Your account has been created successfully. As part of your registration, a store account has also been created for you. You can visit and access the Runverse store anytime directly from the app to explore exclusive products and offers.');
+    }
+
+    // Send Email Notification for Registration
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Welcome to Runverse',
+      html: `
+      <div style="font-family: Arial, sans-serif; color: #333;">
+        <h2>Welcome to Runverse!</h2>
+        <p>Thank you for registering at Runverse. We are excited to have you on board.</p>
+        <p>
+        As part of your registration, a store account has also been created for you. 
+        You can visit and access the Runverse store anytime directly from the app to explore exclusive products and offers.
+        </p>
+        <p>
+        If you have any questions or need assistance, feel free to reply to this email.
+        </p>
+        <br>
+        <p>Best regards,<br><strong>The Runverse Team</strong></p>
+      </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
     } else {
       // Existing user — check if WooCommerce ID exists
       const userData = userDoc.data();
@@ -282,6 +354,7 @@ export const oauthLogin = async (req, res) => {
 
       }
     }
+    
 
     return res.status(200).json({
       message: 'OAuth login successful',
@@ -297,7 +370,6 @@ export const oauthLogin = async (req, res) => {
     });
   }
 };
-
 
 // LOGOUT USER
 export async function logoutUser(req, res) {
@@ -331,6 +403,54 @@ export async function changePassword(req, res) {
   try {
     await admin.auth().updateUser(uid, { password: newPassword });
 
+    let fcmToken;
+    if (!fcmToken) {
+      const db = admin.firestore();
+      const userDoc = await db.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+      fcmToken = userDoc.data().fcmToken || '';
+      }
+    }
+    if (fcmToken) {
+      await sendPushNotification(fcmToken, 'Change Successful', 'Your Runverse Password Has Been Changed!');
+    }
+
+    // Fetch user email using uid if not provided
+    let userEmail = email;
+    if (!userEmail && uid) {
+      try {
+      const userRecord = await admin.auth().getUser(uid);
+      userEmail = userRecord.email;
+      } catch (fetchErr) {
+      console.error('Error fetching user email:', fetchErr);
+      // If unable to fetch email, skip sending email
+      userEmail = null;
+      }
+    }
+
+    if (userEmail) {
+      const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: userEmail,
+      subject: 'Your Runverse Password Has Been Changed',
+      html: `
+      <div style="font-family: Arial, sans-serif; color: #333;">
+        <h2>Password Changed Successfully</h2>
+        <p>Your password for your Runverse account has been updated.</p>
+        <p><strong>Your new password:</strong> <span style="color: #0066cc;">${newPassword}</span></p>
+        <p>
+        Please keep this password safe and do not share it with anyone.<br>
+        If you did not request this change, please contact our support team immediately.
+        </p>
+        <br>
+        <p>Best regards,<br><strong>The Runverse Team</strong></p>
+      </div>
+      `,
+      };
+
+      await transporter.sendMail(mailOptions);
+    }
+
     return res.status(200).json({
       message: 'Password updated successfully',
     });
@@ -338,6 +458,8 @@ export async function changePassword(req, res) {
     console.error('Change password error:', err);
     return res.status(500).json({ error: err.message });
   }
+
+  
 }
 
 // FORGOT PASSWORD
@@ -858,6 +980,45 @@ export async function disableUserProfile(req, res) {
 
     // Update the user's status in Firestore
     await db.collection('users').doc(uid).update({ status: 'disabled' });
+
+    let userEmail;
+    if (!userEmail && uid) {
+      try {
+      const userRecord = await admin.auth().getUser(uid);
+      userEmail = userRecord.email;
+      } catch (fetchErr) {
+      console.error('Error fetching user email:', fetchErr);
+      // If unable to fetch email, skip sending email
+      userEmail = null;
+      }
+    }
+
+    if (userEmail) {
+      const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: userEmail,
+      subject: 'Your Runverse Account Has Been Deleted',
+      html: `
+      <div style="font-family: Arial, sans-serif; color: #333;">
+        <h2>Account Deletion Confirmation</h2>
+        <p>Dear User,</p>
+        <p>
+        This is to confirm that your Runverse account has been successfully deleted as per your request.
+        </p>
+        <p>
+        We appreciate the time you spent with us and thank you for being a part of the Runverse community.
+        </p>
+        <p>
+        If you have any questions or believe this was a mistake, please contact our support team.
+        </p>
+        <br>
+        <p>Best regards,<br><strong>The Runverse Team</strong></p>
+      </div>
+      `,
+      };
+
+      await transporter.sendMail(mailOptions);
+    }
 
     return res.status(200).json({ message: 'User profile disabled successfully' });
   } catch (error) {
