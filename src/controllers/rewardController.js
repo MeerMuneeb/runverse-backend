@@ -198,10 +198,8 @@ export const updateReward = async (req, res) => {
   const { id } = req.params;
   const updates = { ...req.body };
 
-  // Set productPicture for specific types
-  if (updates.type === 'sitewide_discount' || updates.type === 'vendor_discount') {
-    updates.productPicture = 'https://cdn-icons-png.flaticon.com/512/3593/3593464.png';
-  } else if (typeof req.body.productPicture !== 'undefined') {
+  // Only include productPicture if provided
+  if (typeof req.body.productPicture !== 'undefined') {
     updates.productPicture = req.body.productPicture;
   } else {
     // Prevent accidental removal if not sent
@@ -214,6 +212,14 @@ export const updateReward = async (req, res) => {
 
     if (!doc.exists) {
       return res.status(404).json({ error: 'Reward not found' });
+    }
+
+    const docData = doc.data();
+    if (
+      (updates.type === 'sitewide_discount' || updates.type === 'vendor_discount') ||
+      (typeof updates.type === 'undefined' && (docData.type === 'sitewide_discount' || docData.type === 'vendor_discount'))
+    ) {
+      updates.productPicture = 'https://cdn-icons-png.flaticon.com/512/3593/3593464.png';
     }
 
     await docRef.update(updates);
