@@ -84,6 +84,7 @@ export const createReward = async (req, res) => {
     productId,         // Required if type === 'free_item' or 'product_discount'
     vendorId,          // Required if type === 'vendor_discount'
     discountPercentage, // Required if type === 'product_discount', 'vendor_discount', or 'sitewide_discount'
+    productPicture,    // Optional, but should be saved if provided
     status = 'active',
   } = req.body;
 
@@ -127,6 +128,10 @@ export const createReward = async (req, res) => {
       status,
       created_at: admin.firestore.FieldValue.serverTimestamp(),
     };
+
+    if (productPicture) {
+      reward.productPicture = productPicture;
+    }
 
     if (type === 'free_item') {
       reward.productId = productId;
@@ -184,24 +189,32 @@ export const getRewardById = async (req, res) => {
 };
 
 export const updateReward = async (req, res) => {
-    const db = admin.firestore();
-    const { id } = req.params;
-    const updates = req.body;
+  const db = admin.firestore();
+  const { id } = req.params;
+  const updates = { ...req.body };
 
-    try {
-        const docRef = db.collection('rewards').doc(id);
-        const doc = await docRef.get();
+  // Only include productPicture if provided
+  if (typeof req.body.productPicture !== 'undefined') {
+    updates.productPicture = req.body.productPicture;
+  } else {
+    // Prevent accidental removal if not sent
+    delete updates.productPicture;
+  }
 
-        if (!doc.exists) {
-            return res.status(404).json({ error: 'Reward not found' });
-        }
+  try {
+    const docRef = db.collection('rewards').doc(id);
+    const doc = await docRef.get();
 
-        await docRef.update(updates);
-        res.status(200).json({ id, ...updates });
-    } catch (error) {
-        console.error('Error updating reward:', error);
-        res.status(500).json({ error: 'Failed to update reward' });
+    if (!doc.exists) {
+      return res.status(404).json({ error: 'Reward not found' });
     }
+
+    await docRef.update(updates);
+    res.status(200).json({ id, ...updates });
+  } catch (error) {
+    console.error('Error updating reward:', error);
+    res.status(500).json({ error: 'Failed to update reward' });
+  }
 };
 
 export const deleteReward = async (req, res) => {
