@@ -131,6 +131,8 @@ export const createReward = async (req, res) => {
 
     if (productPicture) {
       reward.productPicture = productPicture;
+    } else {
+      reward.productPicture = ''; // Default to empty string if not provided
     }
 
     if (type === 'free_item') {
