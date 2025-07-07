@@ -35,7 +35,13 @@ export const getWallet = async (req, res) => {
       return res.status(404).json({ error: 'Wallet not found' });
     }
 
-    res.json(doc.data());
+    const walletData = doc.data();
+    // Reverse the transactions array if it exists
+    if (walletData.transactions && Array.isArray(walletData.transactions)) {
+      walletData.transactions = walletData.transactions.slice().reverse();
+    }
+
+    res.json(walletData);
   } catch (error) {
     console.error('Get wallet error:', error);
     res.status(500).json({ error: 'Internal Server Error' });
