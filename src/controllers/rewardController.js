@@ -215,10 +215,8 @@ export const updateReward = async (req, res) => {
     }
 
     const docData = doc.data();
-    if (
-      (updates.type === 'sitewide_discount' || updates.type === 'vendor_discount') ||
-      (typeof updates.type === 'undefined' && (docData.type === 'sitewide_discount' || docData.type === 'vendor_discount'))
-    ) {
+    if (docData.type === 'sitewide_discount' || docData.type === 'vendor_discount')
+    {
       updates.productPicture = 'https://cdn-icons-png.flaticon.com/512/3593/3593464.png';
     }
 
