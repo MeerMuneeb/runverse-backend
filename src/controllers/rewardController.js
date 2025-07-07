@@ -129,7 +129,10 @@ export const createReward = async (req, res) => {
       created_at: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    if (productPicture) {
+    // Set productPicture based on type
+    if (type === 'sitewide_discount' || type === 'vendor_discount') {
+      reward.productPicture = 'https://cdn-icons-png.flaticon.com/512/3593/3593464.png';
+    } else if (productPicture) {
       reward.productPicture = productPicture;
     } else {
       reward.productPicture = ''; // Default to empty string if not provided
@@ -195,8 +198,10 @@ export const updateReward = async (req, res) => {
   const { id } = req.params;
   const updates = { ...req.body };
 
-  // Only include productPicture if provided
-  if (typeof req.body.productPicture !== 'undefined') {
+  // Set productPicture for specific types
+  if (updates.type === 'sitewide_discount' || updates.type === 'vendor_discount') {
+    updates.productPicture = 'https://cdn-icons-png.flaticon.com/512/3593/3593464.png';
+  } else if (typeof req.body.productPicture !== 'undefined') {
     updates.productPicture = req.body.productPicture;
   } else {
     // Prevent accidental removal if not sent
