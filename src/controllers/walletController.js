@@ -90,8 +90,8 @@ export const withdrawTokens = async (req, res) => {
       const walletDoc = await transaction.get(walletRef);
       if (!walletDoc.exists) throw new Error('Wallet not found');
 
-      // const currentBalance = walletDoc.data().balance || 0;
-      // if (currentBalance < amount) throw new Error('Insufficient balance');
+      const currentBalance = walletDoc.data().balance || 0;
+      if (currentBalance < amount) throw new Error('Insufficient balance');
 
       // const newBalance = currentBalance - amount;
 
