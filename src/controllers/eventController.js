@@ -55,6 +55,22 @@ export const getEvents = async (req, res) => {
       query = query.where('status', '==', req.query.status);
     }
 
+    // Optional: filter by luckydraw query param
+    if (req.query.luckydraw === 'true') {
+      // Get all eventIds from the 'luckydraws' collection
+      const luckydrawSnapshot = await db.collection('luckydraws').get();
+      const luckydrawEventIds = luckydrawSnapshot.docs.map(doc => doc.data().eventId); // Assuming 'eventId' is a field inside each lucky draw document
+
+      // If no luckydraw eventIds found, return empty result
+      if (luckydrawEventIds.length === 0) {
+        return res.status(200).json([]);
+      }
+
+      // Filter the events by the eventIds found in luckydraws
+      query = query.where('eventId', 'in', luckydrawEventIds);
+    }
+
+
     const snapshot = await query.get();
     const now = new Date();
     const batch = db.batch();

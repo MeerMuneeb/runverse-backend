@@ -434,12 +434,8 @@ export const drawWinners = async (req, res) => {
       updatedAt: new Date().toISOString().split('T')[0],
     });
 
-    // Deactivate the lucky draw and save winners
-    await luckyDraw.ref.update({
-      active: false,
-      winners: winnersWithDetails,
-      updatedAt: admin.firestore.Timestamp.now(),
-    });
+    // Delete the lucky draw after drawing winners
+    await luckyDraw.ref.delete();
 
     res.status(200).json({ message: 'Lucky draw completed successfully', winners });
   } catch (error) {
