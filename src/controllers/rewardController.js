@@ -206,6 +206,11 @@ export const updateReward = async (req, res) => {
     delete updates.productPicture;
   }
 
+  // Convert tokens to number if present and is a string
+  if (typeof updates.tokens === 'string' && !isNaN(updates.tokens)) {
+    updates.tokens = Number(updates.tokens);
+  }
+
   try {
     const docRef = db.collection('rewards').doc(id);
     const doc = await docRef.get();
