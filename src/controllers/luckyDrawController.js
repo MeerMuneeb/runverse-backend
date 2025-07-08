@@ -702,7 +702,7 @@ export const getUserLuckyDraws = async (req, res) => {
     const response = [];
 
     for (const luckyDraw of luckyDraws) {
-      const { eventId, participants, drawDate, maxEntries } = luckyDraw;
+      const { eventId, participants, drawDate, maxEntries, entryPriceCurrency, entryPriceTokens } = luckyDraw;
 
       // Calculate user current entries for the lucky draw
       const userCurrentEntries = participants.filter(uid => uid === userId).length;
@@ -725,6 +725,8 @@ export const getUserLuckyDraws = async (req, res) => {
         maxEntries,
         eventName,
         eventId,
+        entryPriceCurrency,
+        entryPriceTokens,
       });
     }
 
