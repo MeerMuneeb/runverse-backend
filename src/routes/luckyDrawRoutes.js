@@ -2,7 +2,7 @@ import express from 'express';
 import {
   createLuckyDraw,
   updateLuckyDraw,
-  joinLuckyDraw,
+  joinLuckyDraww,
   buyEntry,
   drawWinners,
   addReward,
@@ -39,7 +39,7 @@ router.put('/update/:eventId', updateLuckyDraw);
 router.patch('/update/:eventId', updateLuckyDraw);
 
 // Route for users to join a lucky draw
-router.post('/join', joinLuckyDraw);
+router.post('/join', joinLuckyDraww);
 
 // Route for users to buy entries (tokens or currency)
 router.post('/buy-entry', buyEntry);

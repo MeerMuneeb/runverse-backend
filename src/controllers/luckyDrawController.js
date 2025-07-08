@@ -86,11 +86,13 @@ export const joinLuckyDraw = async (userId, eventId) => {
   try {
     const db = admin.firestore();
 
+    // console.log('Querying luckyDraws for eventId:', eventId);
     const luckyDrawRef = db.collection(COLLECTION).where('eventId', '==', eventId);
     const snapshot = await luckyDrawRef.get();
 
     if (snapshot.empty) {
-      return { success: false, message: 'Lucky draw not found for this event.' };
+      // console.log('No lucky draw found for eventId:', eventId);
+      return res.status(404).json({ success: false, message: 'Lucky draw not found for this event.' });
     }
 
     const luckyDraw = snapshot.docs[0];
@@ -98,21 +100,71 @@ export const joinLuckyDraw = async (userId, eventId) => {
     const participants = data.participants || [];
     const maxEntries = data.maxEntries;
 
+    // console.log('Current participants:', participants.length, 'Max entries:', maxEntries);
+
     // Count how many times the user has already joined
     const userEntries = participants.filter(uid => uid === userId).length;
+    // console.log('User', userId, 'current entries:', userEntries);
 
     if (userEntries >= maxEntries) {
-      return { success: false, message: `You have reached the maximum allowed entries (${maxEntries}) for this lucky draw.` };
+      // console.log('User has reached max entries');
+      return res.status(400).json({ success: false, message: `You have reached the maximum allowed entries (${maxEntries}) for this lucky draw.` });
     }
 
     // Add the user to the participants list
     participants.push(userId);
+    // console.log('Updating participants array...');
     await luckyDraw.ref.update({ participants });
 
-    return { success: true, message: 'You have successfully joined the lucky draw.' };
+    // console.log('User successfully joined the lucky draw');
+    return res.status(200).json({ success: true, message: 'You have successfully joined the lucky draw.' });
   } catch (error) {
     console.error('Failed to join lucky draw:', error);
-    return { success: false, message: 'Failed to join lucky draw' };
+    return res.status(500).json({ success: false, message: 'Failed to join lucky draw' });
+  }
+}
+
+export const joinLuckyDraww = async (req, res) => {
+  try {
+    console.log('joinLuckyDraww called with body:', req.body);
+    const { userId, eventId } = req.body;
+    const db = admin.firestore();
+
+    console.log('Querying luckyDraws for eventId:', eventId);
+    const luckyDrawRef = db.collection(COLLECTION).where('eventId', '==', eventId);
+    const snapshot = await luckyDrawRef.get();
+
+    if (snapshot.empty) {
+      console.log('No lucky draw found for eventId:', eventId);
+      return res.status(404).json({ success: false, message: 'Lucky draw not found for this event.' });
+    }
+
+    const luckyDraw = snapshot.docs[0];
+    const data = luckyDraw.data();
+    const participants = data.participants || [];
+    const maxEntries = data.maxEntries;
+
+    console.log('Current participants:', participants.length, 'Max entries:', maxEntries);
+
+    // Count how many times the user has already joined
+    const userEntries = participants.filter(uid => uid === userId).length;
+    console.log('User', userId, 'current entries:', userEntries);
+
+    if (userEntries >= maxEntries) {
+      console.log('User has reached max entries');
+      return res.status(400).json({ success: false, message: `You have reached the maximum allowed entries (${maxEntries}) for this lucky draw.` });
+    }
+
+    // Add the user to the participants list
+    participants.push(userId);
+    console.log('Updating participants array...');
+    await luckyDraw.ref.update({ participants });
+
+    console.log('User successfully joined the lucky draw');
+    return res.status(200).json({ success: true, message: 'You have successfully joined the lucky draw.' });
+  } catch (error) {
+    console.error('Failed to join lucky draw:', error);
+    return res.status(500).json({ success: false, message: 'Failed to join lucky draw' });
   }
 };
 

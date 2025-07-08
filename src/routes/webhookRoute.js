@@ -167,6 +167,10 @@ router.post('/webhook', async (req, res) => {
           console.warn(`No achievement found for pkg_id: ${packageId}`);
         }
 
+        const eventId = packageData.eventId;
+
+        joinLuckyDraw(eventId, firebaseUID); // Call joinLuckyDraw with eventId and firebaseUID
+
         // Update user document with package info and milestones
         await admin.firestore().collection('users').doc(firebaseUID).set(
           {
