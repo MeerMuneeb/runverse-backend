@@ -212,7 +212,19 @@ router.post('/webhook', async (req, res) => {
         console.log(`Processing lucky draw entry for UID ${firebaseUID}, Event ID: ${eventId}, Entries: ${entryCount}`);
 
         // Join the lucky draw
-        const luckyDrawRef = admin.firestore().collection('luckyDraws').doc(eventId);
+        // Find the lucky draw document where eventId matches
+        const luckyDrawQuery = await admin.firestore()
+          .collection('luckyDraws')
+          .where('eventId', '==', eventId)
+          .limit(1)
+          .get();
+
+        if (luckyDrawQuery.empty) {
+          console.warn(`Lucky draw with eventId ${eventId} not found`);
+          return res.status(400).send('Lucky draw not found');
+        }
+
+        const luckyDrawRef = luckyDrawQuery.docs[0].ref;
         const luckyDrawSnap = await luckyDrawRef.get();
 
         if (!luckyDrawSnap.exists) {
