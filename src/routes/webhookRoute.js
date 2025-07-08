@@ -217,7 +217,7 @@ router.post('/webhook', async (req, res) => {
 
         if (!luckyDrawSnap.exists) {
           console.warn(`Lucky draw with ID ${eventId} not found`);
-          return res.status(400).send('Lucky draw not found');
+          return res.status(400).send('Lucky draw not found here ->');
         }
 
         const participants = luckyDrawSnap.data().participants || [];
