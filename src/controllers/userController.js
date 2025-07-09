@@ -1033,13 +1033,16 @@ export async function disableUserProfile(req, res) {
   }
 }
 
-
 // SEND TEST PUSH NOTIFICATION TO USER BY UID
 export async function sendTestNotification(req, res) {
-  const { uid } = req.body;
+  const { uid, message } = req.body;
 
   if (!uid) {
     return res.status(400).json({ error: 'User ID (uid) is required' });
+  }
+
+  if (!message) {
+    return res.status(400).json({ error: 'Message is required' });
   }
 
   try {
@@ -1060,7 +1063,7 @@ export async function sendTestNotification(req, res) {
     await sendPushNotification(
       fcmToken,
       'Runverse Test Notification 🚀',
-      'This is a test push notification from Postman!'
+      message
     );
 
     return res.status(200).json({ message: 'Test notification sent successfully' });

@@ -302,7 +302,7 @@ export const buyEntry = async (req, res) => {
     }
 
     // Handle Stripe payment (currency method)
-    if (paymentMethod === 'currency') {
+    if (paymentMethod === 'card') {
       // Use existing customerId from user document
       const userDoc = userSnap.data();
       const customerId = userDoc.stripeCustomerId;
@@ -338,7 +338,7 @@ export const buyEntry = async (req, res) => {
       });
     }
 
-    else if (paymentMethod === 'tokens') {
+    else if (paymentMethod === 'mvt') {
       // Handle wallet payment method (using entryPriceTokens)
       const walletRef = db.collection('wallets').doc(userId);
       const walletSnap = await walletRef.get();
