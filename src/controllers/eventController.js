@@ -38,6 +38,30 @@ export const createEvent = async (req, res) => {
     };
 
     const docRef = await db.collection(COLLECTION).add(newEvent);
+
+    // Send notifications to all users
+    const usersSnapshot = await db.collection('users').get();  // Fetch all users from Firestore
+    const userTokens = usersSnapshot.docs.map(doc => doc.data().fcmToken).filter(token => token); // Get all valid FCM tokens
+
+    if (userTokens.length > 0) {
+      const message = {
+        notification: {
+          title: `New Event: ${name}`,
+          body: 'Join the event to get new and exciting prizes!',
+        },
+        tokens: userTokens, // Send notification to all users
+      };
+
+      // Send push notification to all users
+      try {
+        await admin.messaging().sendMulticast(message);
+        console.log('Notification sent successfully');
+      } catch (error) {
+        console.error('Failed to send notifications:', error);
+      }
+    }
+
+    // Respond with success
     res.status(201).json({ id: docRef.id, ...newEvent });
   } catch (error) {
     console.error('Failed to create event:', error);

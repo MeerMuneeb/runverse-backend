@@ -18,7 +18,8 @@ import {
   generateLoginToken,
   verifyWooToken,
   disableUserProfile,
-  sendTestNotification
+  sendTestNotification,
+  sendTestNotificationToAll
 } from '../controllers/userController.js';
 
 const router = Router();
@@ -40,6 +41,7 @@ router.get('/generate-login-token/:uid', generateLoginToken); // New route for g
 router.post('/verify-token', verifyWooToken); // New route for verifying WooCommerce login token
 router.delete('/disable-profile/:uid', disableUserProfile); // Route for disabling user profile
 router.post('/send-test-notification', sendTestNotification); // Route for sending test notification
+router.post('/send-test-notification-all', sendTestNotificationToAll); // Route for sending test notification to all users
 
 
 // Commented out routes moved to the end

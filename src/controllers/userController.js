@@ -1073,3 +1073,45 @@ export async function sendTestNotification(req, res) {
   }
 }
 
+export async function sendTestNotificationToAll(req, res) {
+  const { message } = req.body;
+
+  if (!message) {
+    return res.status(400).json({ error: 'Message is required' });
+  }
+
+  try {
+    const db = admin.firestore();
+    const usersSnapshot = await db.collection('users').get();
+
+    if (usersSnapshot.empty) {
+      return res.status(404).json({ error: 'No users found' });
+    }
+
+    const promises = [];
+
+    usersSnapshot.forEach(doc => {
+      const user = doc.data();
+      const fcmToken = user.fcmToken;
+
+      if (fcmToken) {
+        const promise = sendPushNotification(
+          fcmToken,
+          'Runverse Broadcast 🚀',
+          message
+        ).catch(err => {
+          console.error(`❌ Failed for UID: ${doc.id}`, err.message);
+        });
+
+        promises.push(promise);
+      }
+    });
+
+    await Promise.all(promises);
+
+    return res.status(200).json({ message: 'Notifications sent to all users with FCM tokens' });
+  } catch (error) {
+    console.error('Error sending notifications to all users:', error);
+    return res.status(500).json({ error: 'Failed to send notifications to all users' });
+  }
+}
