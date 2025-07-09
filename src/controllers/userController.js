@@ -7,6 +7,7 @@ import { createWooCommerceCustomer } from '../utils/woocommerce.js';
 import jwt from 'jsonwebtoken';
 import { createWallet } from './walletController.js'; // Import createWallet function
 import { allocateTokensToUser } from '../controllers/blockchainController.js'; // Import allocateTokensToUser function
+import { sendPushNotification } from '../utils/sendPushNotification.js'; // Import sendPushNotification function
 
 dotenv.config();
 
@@ -183,7 +184,7 @@ export async function registerUser(req, res) {
 
 // LOGIN USER
 export async function loginUser(req, res) {
-  const { email, password } = req.body;
+  const { email, password, fcmToken } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' });
@@ -215,8 +216,13 @@ export async function loginUser(req, res) {
     }
 
     // Try to get fcmToken from response.data, otherwise fetch from Firestore
-    let fcmToken = response.data.fcmToken;
-    if (!fcmToken) {
+    // let fcmToken = response.data.fcmToken;
+    // If fcmToken is provided in the request, update it in Firestore
+    if (fcmToken) {
+      const db = admin.firestore();
+      await db.collection('users').doc(localId).update({ fcmToken });
+    } else {
+      // If not provided, try to fetch from Firestore
       const db = admin.firestore();
       const userDoc = await db.collection('users').doc(localId).get();
       if (userDoc.exists) {
@@ -1028,4 +1034,39 @@ export async function disableUserProfile(req, res) {
 }
 
 
+// SEND TEST PUSH NOTIFICATION TO USER BY UID
+export async function sendTestNotification(req, res) {
+  const { uid } = req.body;
+
+  if (!uid) {
+    return res.status(400).json({ error: 'User ID (uid) is required' });
+  }
+
+  try {
+    const db = admin.firestore();
+    const userDoc = await db.collection('users').doc(uid).get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const userData = userDoc.data();
+    const fcmToken = userData.fcmToken;
+
+    if (!fcmToken) {
+      return res.status(400).json({ error: 'FCM token not found for user' });
+    }
+
+    await sendPushNotification(
+      fcmToken,
+      'Runverse Test Notification 🚀',
+      'This is a test push notification from Postman!'
+    );
+
+    return res.status(200).json({ message: 'Test notification sent successfully' });
+  } catch (error) {
+    console.error('Error sending test notification:', error);
+    return res.status(500).json({ error: 'Failed to send test notification' });
+  }
+}
 
