@@ -7,7 +7,7 @@ import { createWooCommerceCustomer } from '../utils/woocommerce.js';
 import jwt from 'jsonwebtoken';
 import { createWallet } from './walletController.js'; // Import createWallet function
 import { allocateTokensToUser } from '../controllers/blockchainController.js'; // Import allocateTokensToUser function
-import { sendPushNotification } from '../utils/sendPushNotification.js'; // Import sendPushNotification function
+import { sendPushNotification, sendPushNotificationToMultipleDevices } from '../utils/sendPushNotification.js'; // Import sendPushNotification function
 
 dotenv.config();
 
@@ -1073,6 +1073,72 @@ export async function sendTestNotification(req, res) {
   }
 }
 
+// export async function sendTestNotificationToAll(req, res) {
+//   const { message } = req.body;
+
+//   if (!message) {
+//     return res.status(400).json({ error: 'Message is required' });
+//   }
+
+//   try {
+//     const db = admin.firestore();
+//     const usersSnapshot = await db.collection('users').get();
+
+//     if (usersSnapshot.empty) {
+//       return res.status(404).json({ error: 'No users found' });
+//     }
+
+//     // const promises = [];
+
+//     // usersSnapshot.forEach(doc => {
+//     //   const user = doc.data();
+//     //   const fcmToken = user.fcmToken;
+
+//     //   if (fcmToken) {
+//     //     const promise = sendPushNotification(
+//     //       fcmToken,
+//     //       'Runverse Broadcast 🚀',
+//     //       message
+//     //     ).catch(err => {
+//     //       console.error(`❌ Failed for UID: ${doc.id}`, err.message);
+//     //     });
+
+//     //     promises.push(promise);
+//     //   }
+//     // });
+
+//     // const usersSnapshot = await db.collection('users').get();  // Fetch all users from Firestore
+//         const userTokens = usersSnapshot.docs.map(doc => doc.data().fcmToken).filter(token => token); // Get all valid FCM tokens
+    
+//         if (userTokens.length > 0) {
+//           const message = {
+//             notification: {
+//               title: `New Event: `,
+//               body: 'Join the event to get new and exciting prizes!',
+//             },
+//             tokens: userTokens, // Send notification to all users
+//           };
+    
+//           // Send push notification to all users
+//           try {
+//             await admin.messaging().sendMulticast(message);
+//             console.log('Notification sent successfully');
+//           } catch (error) {
+//             console.error('Failed to send notifications:', error);
+//           }
+//         }
+
+//     // await Promise.all(promises);
+
+//     return res.status(200).json({ message: 'Notifications sent to all users with FCM tokens' });
+//   } catch (error) {
+//     console.error('Error sending notifications to all users:', error);
+//     return res.status(500).json({ error: 'Failed to send notifications to all users' });
+//   }
+// }
+
+// import admin from 'firebase-admin';import { sendPushNotification } from '../utils/notifications.js'; // You can also use this helper function
+
 export async function sendTestNotificationToAll(req, res) {
   const { message } = req.body;
 
@@ -1088,28 +1154,35 @@ export async function sendTestNotificationToAll(req, res) {
       return res.status(404).json({ error: 'No users found' });
     }
 
-    const promises = [];
+    // Get all valid FCM tokens
+    const userTokens = usersSnapshot.docs
+      .map(doc => doc.data().fcmToken)
+      .filter(token => token); // Filter out invalid tokens
 
-    usersSnapshot.forEach(doc => {
-      const user = doc.data();
-      const fcmToken = user.fcmToken;
+    if (userTokens.length > 0) {
+      const notificationMessage = {
+        notification: {
+          title: 'Runverse Broadcast 🚀', // You can add the dynamic title here
+          body: message, // Use the message from the request body
+        },
+        tokens: userTokens, // Send notification to all users
+      };
 
-      if (fcmToken) {
-        const promise = sendPushNotification(
-          fcmToken,
-          'Runverse Broadcast 🚀',
-          message
-        ).catch(err => {
-          console.error(`❌ Failed for UID: ${doc.id}`, err.message);
-        });
+      sendPushNotificationToMultipleDevices(userTokens, 'New Update!', 'Check out the latest features in our app!');
 
-        promises.push(promise);
-      }
-    });
+      // Send push notification to all users
+      // try {
+      //   await admin.messaging().sendMulticast(notificationMessage);
+      //   console.log('Notification sent successfully to all users');
+      // } catch (error) {
+      //   console.error('Failed to send notifications:', error);
+      //   return res.status(500).json({ error: 'Failed to send notifications' });
+      // }
+    } else {
+      return res.status(404).json({ error: 'No valid FCM tokens found' });
+    }
 
-    await Promise.all(promises);
-
-    return res.status(200).json({ message: 'Notifications sent to all users with FCM tokens' });
+    return res.status(200).json({ message: 'Notifications sent to all users with valid FCM tokens' });
   } catch (error) {
     console.error('Error sending notifications to all users:', error);
     return res.status(500).json({ error: 'Failed to send notifications to all users' });
