@@ -592,7 +592,33 @@ export const getLuckyDraw = async (req, res) => {
     }
 
     const luckyDraw = snapshot.docs[0];
-    res.status(200).json({ id: luckyDraw.id, ...luckyDraw.data() });
+    const data = luckyDraw.data();
+
+    // Get unique participant userIds
+    const participantIds = Array.from(new Set(data.participants || []));
+
+    // Fetch user data for each participant (only name and picture)
+    let usersData = {};
+    if (participantIds.length > 0) {
+      const userDocs = await db.getAll(
+        ...participantIds.map(uid => db.collection('users').doc(uid))
+      );
+      usersData = userDocs.reduce((acc, doc, idx) => {
+        if (doc.exists) {
+          const { name, picture } = doc.data();
+          acc[participantIds[idx]] = { name, picture };
+        }
+        return acc;
+      }, {});
+    }
+
+    // Replace participant uids with user objects (name, picture, userId)
+    const populatedParticipants = (data.participants || []).map(uid => ({
+      userId: uid,
+      ...usersData[uid]
+    }));
+
+    res.status(200).json({ id: luckyDraw.id, ...data, participants: populatedParticipants });
   } catch (error) {
     console.error('Failed to get lucky draw:', error);
     res.status(500).json({ message: 'Failed to get lucky draw' });
