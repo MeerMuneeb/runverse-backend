@@ -679,40 +679,38 @@ export const getUserLuckyDraws = async (req, res) => {
       return res.status(400).json({ message: 'userId is required' });
     }
 
-    // Build the query for lucky draws based on eventId if provided
-    let luckyDrawQuery = db.collection(COLLECTION).where('participants', 'array-contains', userId);
+    // Fetch all lucky draws, optionally filtered by eventId
+    let allLuckyDrawsQuery = db.collection(COLLECTION);
 
     if (eventId) {
-      luckyDrawQuery = luckyDrawQuery.where('eventId', '==', eventId);
+      allLuckyDrawsQuery = allLuckyDrawsQuery.where('eventId', '==', eventId);
     }
 
-    const snapshot = await luckyDrawQuery.get();
+    const allLuckyDrawsSnapshot = await allLuckyDrawsQuery.get();
 
-    if (snapshot.empty) {
-      return res.status(404).json({ message: 'No lucky draws found for this user' });
-    }
+    const allLuckyDraws = allLuckyDrawsSnapshot.docs.map(doc => ({
+      id: doc.id, // Include the document ID if needed
+      ...doc.data()
+    }));
 
-    const luckyDraws = snapshot.docs.map(doc => doc.data());
-
-    // Gather the event details and structure the response
+    // Prepare the response array
     const response = [];
 
-    for (const luckyDraw of luckyDraws) {
+    for (const luckyDraw of allLuckyDraws) {
       const { eventId, participants, drawDate, maxEntries, entryPriceCurrency, entryPriceTokens } = luckyDraw;
 
-      // Calculate user current entries for the lucky draw
-      const userCurrentEntries = participants.filter(uid => uid === userId).length;
+      // Calculate user current entries for the lucky draw (will be 0 if not present)
+      const userCurrentEntries = participants ? participants.filter(uid => uid === userId).length : 0;
 
       // Fetch the event details
       const eventRef = db.collection('events').doc(eventId);
       const eventSnapshot = await eventRef.get();
 
-      if (!eventSnapshot.exists) {
-        continue; // If event not found, skip this lucky draw
+      let eventName = 'Unknown Event';
+      if (eventSnapshot.exists) {
+        const event = eventSnapshot.data();
+        eventName = event.name || 'Unknown Event';
       }
-
-      const event = eventSnapshot.data();
-      const eventName = event.name || 'Unknown Event';
 
       // Add the relevant details to the response
       response.push({
@@ -723,6 +721,8 @@ export const getUserLuckyDraws = async (req, res) => {
         eventId,
         entryPriceCurrency,
         entryPriceTokens,
+        // You might want to include the luckyDraw's ID as well
+        luckyDrawId: luckyDraw.id,
       });
     }
 
