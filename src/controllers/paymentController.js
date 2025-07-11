@@ -251,6 +251,9 @@ export const payWithWallet = async (req, res) => {
 
     const wallet = walletSnap.data();
     const pkg = pkgSnap.data();
+    const eventId = pkg.eventId; // Get eventId from the package
+
+    joinLuckyDraw(eventId, uid); // Call joinLuckyDraw function with eventId and uid
 
     if (wallet.balance < pkg.mvtPrice) {
       return res.status(400).json({ error: 'Insufficient wallet balance' });

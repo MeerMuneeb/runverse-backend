@@ -51,31 +51,39 @@ export const getWallet = async (req, res) => {
 // Add tokens to wallet
 export const addTokens = async (uid, amount, description) => {
   const db = admin.firestore();
-  if (!uid || !amount) throw new Error('User ID and amount are required');
+  if (!uid || !amount) {
+    console.log('addTokens error: User ID and amount are required');
+    throw new Error('User ID and amount are required');
+  }
 
   const walletRef = db.collection('wallets').doc(uid);
 
   await db.runTransaction(async (transaction) => {
-  const walletDoc = await transaction.get(walletRef);
-  if (!walletDoc.exists) throw new Error('Wallet not found');
+    const walletDoc = await transaction.get(walletRef);
+    if (!walletDoc.exists) {
+      console.log(`addTokens error: Wallet not found for uid ${uid}`);
+      throw new Error('Wallet not found');
+    }
 
-  const currentBalance = walletDoc.data().balance || 0;
-  const newBalance = currentBalance + amount;
+    const currentBalance = walletDoc.data().balance || 0;
+    const newBalance = currentBalance + amount;
 
-  transaction.update(walletRef, {
-    balance: newBalance,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(), // ✅ fine here
-    transactions: admin.firestore.FieldValue.arrayUnion({
-      type: 'credit',
-      amount,
-      description: description || 'Tokens added',
-      timestamp: new Date() // ✅ use JS Date instead of serverTimestamp
-    }),
+    console.log(`addTokens: Adding ${amount} tokens to uid ${uid}. Old balance: ${currentBalance}, New balance: ${newBalance}`);
+
+    transaction.update(walletRef, {
+      balance: newBalance,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      transactions: admin.firestore.FieldValue.arrayUnion({
+        type: 'credit',
+        amount,
+        description: description || 'Tokens added',
+        timestamp: new Date()
+      }),
+    });
   });
-});
 
-
-  return { message: 'Tokens added successfully' };
+  console.log(`addTokens: Tokens added successfully for uid ${uid}`);
+  return { success: true, message: 'Tokens added successfully' };
 };
 
 export const withdrawTokens = async (req, res) => {

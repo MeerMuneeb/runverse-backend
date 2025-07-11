@@ -9,7 +9,8 @@ import {
   updateBadgesTokens,
   updatePackageTokens,
   updateDistanceTokens,
-  getTokenStats
+  getTokenStats,
+  allocateTokensToUserController  
 } from '../controllers/blockchainController.js';
 
 const router = express.Router();
@@ -24,6 +25,7 @@ router.put('/update/rewards-tokens', updateRewardsTokens);
 router.put('/update/badges-tokens', updateBadgesTokens);
 router.put('/update/package-tokens', updatePackageTokens);
 router.put('/update/distance-tokens', updateDistanceTokens);
+router.post('/allocate-tokens', allocateTokensToUserController); // Allocate tokens to a user
 
 export default router;
 

@@ -664,7 +664,133 @@ export async function allocateTokensToUser(uid, category, reason, metadata = {})
   }
 }
 
+/**
+ * Controller: Allocate tokens to user (API endpoint)
+ * Expects: { uid, category, reason, metadata }
+ */
+export async function allocateTokensToUserController(req, res) {
+  const { uid, category, reason, metadata = {} } = req.body;
 
+  if (!uid || !category) {
+    return res.status(400).json({ error: 'Valid UID and category are required' });
+  }
+
+  try {
+    const db = admin.firestore();
+    const tokenConfigDoc = await db.collection('blockchain_config').doc('token_settings').get();
+    const config = tokenConfigDoc.data();
+
+    if (!config) {
+      return res.status(404).json({ error: 'Token configuration not found' });
+    }
+
+    let tokenAmount;
+    let status;
+
+    // Switch based on the category
+    switch (category) {
+      case 'login':
+        tokenAmount = config.loginTokens;
+        status = config.loginStatus;
+        break;
+
+      case 'registration':
+        tokenAmount = config.registrationTokens;
+        status = config.registrationStatus;
+        break;
+
+      case 'rewards': {
+        const { rewardId } = metadata;
+        if (!rewardId) return res.status(400).json({ error: 'Reward ID is required for rewards category' });
+
+        const rewardDoc = await db.collection('rewards').doc(rewardId).get();
+        if (!rewardDoc.exists) return res.status(404).json({ message: 'Reward not found, skipping token allocation' });
+
+        tokenAmount = rewardDoc.data().tokens;
+        status = config.rewardsStatus;
+        break;
+      }
+
+      case 'badges': {
+        const { badgeId } = metadata;
+        if (!badgeId) return res.status(400).json({ error: 'Badge ID is required for badges category' });
+
+        const badgeDoc = await db.collection('badges').doc(badgeId).get();
+        if (!badgeDoc.exists) return res.status(404).json({ message: 'Badge not found, skipping token allocation' });
+
+        tokenAmount = badgeDoc.data().tokens;
+        status = config.badgesStatus;
+        break;
+      }
+
+      case 'packages': {
+        const { pkgId } = metadata;
+        if (!pkgId) return res.status(400).json({ error: 'Package ID is required for packages category' });
+
+        const pkg = config.packageTokens.find(pkg => pkg.pkgId === pkgId);
+        if (!pkg) return res.status(404).json({ message: 'Package not found, skipping token allocation' });
+
+        tokenAmount = pkg.tokens;
+        status = config.packagesStatus === 'active' && pkg.status === 'active' ? 'active' : 'inactive';
+        break;
+      }
+
+      case 'runDistance': {
+        const { distance } = metadata;
+        if (!distance) return res.status(400).json({ error: 'Distance is required for runDistance category' });
+
+        const distConfig = config.distanceTokens[distance];
+        if (!distConfig) return res.status(404).json({ message: 'No distance configuration found, skipping token allocation' });
+
+        tokenAmount = distConfig.tokens;
+        status = config.distanceStatus === 'active' && distConfig.status === 'active' ? 'active' : 'inactive';
+        break;
+      }
+
+      default:
+        return res.status(400).json({ message: 'Invalid category, skipping token allocation' });
+    }
+
+    // Skip allocation if status is inactive
+    if (status !== 'active') {
+      return res.status(200).json({ message: `Skipping token allocation for category "${category}" due to inactive status.` });
+    }
+
+    // Skip if token amount is invalid
+    if (tokenAmount === undefined || tokenAmount <= 0) {
+      return res.status(200).json({ message: 'Invalid token amount, skipping allocation' });
+    }
+
+    // Add tokens to wallet
+    const result = await addTokens(uid, tokenAmount, reason);
+    if (!result || !result.success) {
+      return res.status(500).json({ error: 'Token addition failed' });
+    }
+
+    // Update spent tokens
+    await db.collection('blockchain_config').doc('token_settings').update({
+      spentTokens: admin.firestore.FieldValue.increment(tokenAmount),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Log the token transaction
+    await db.collection('token_transactions').add({
+      userId: uid,
+      amount: tokenAmount,
+      type: 'allocated',
+      reason,
+      metadata: JSON.parse(JSON.stringify(metadata || {})),
+      status: 'completed',
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    return res.status(200).json({ message: `Successfully allocated ${tokenAmount} tokens to user ${uid}` });
+
+  } catch (error) {
+    console.error('Error allocating tokens to user:', error);
+    return res.status(500).json({ error: error.message || 'Failed to allocate tokens to user' });
+  }
+}
 
 /**
  * Get token statistics and overview

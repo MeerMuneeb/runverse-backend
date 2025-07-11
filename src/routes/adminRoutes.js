@@ -5,7 +5,8 @@ import {
   createAdminUser,
   getAdmin,
   updateAdmin,
-  deleteAdmin
+  deleteAdmin,
+  loginSuperAdmin
 } from '../controllers/adminController.js';
 import { verifyToken } from '../middleware/auth.js'; // Adjust path as needed
 
@@ -19,5 +20,6 @@ router.post('/create', verifyToken, createAdminUser);
 router.get('/get-admin/:uid', verifyToken, getAdmin);
 router.put('/update/:uid', verifyToken, upload.single('profilePicture'), updateAdmin);
 router.delete('/delete/:uid', verifyToken, deleteAdmin);
+router.post('/superadmin/login', loginSuperAdmin);
 
 export default router;

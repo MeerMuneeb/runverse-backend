@@ -2,6 +2,7 @@ import admin from '../config/firebase.js';
 import axios from 'axios';
 import { uploadToWordPress } from '../utils/uploadToWordPress.js';
 import { ROLES, ROLE_PERMISSIONS } from '../config/roles.js';
+import jwt from 'jsonwebtoken';
 
 const DEFAULT_PROFILE_PICTURE_URL = 'https://gravatar.com/avatar/27205e5c51cb03f862138b22bcb5dc20f94a342e744ff6df1b8dc8af3c865109?s=200&r=mp&d=mp';
 
@@ -178,7 +179,6 @@ export async function updateAdmin(req, res) {
   }
 }
 
-
 export async function deleteAdmin(req, res) {
   try {
     const { uid } = req.params;
@@ -210,4 +210,35 @@ export async function updateLastLogin(uid) {
   } catch (error) {
     console.error('Error updating lastLogin:', error);
   }
+}
+
+
+export async function loginSuperAdmin(req, res) {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
+  }
+
+  // Check credentials against .env
+  if (
+    email !== process.env.SUPER_ADMIN_EMAIL ||
+    password !== process.env.SUPER_ADMIN_PASSWORD
+  ) {
+    return res.status(401).json({ error: 'Invalid super admin credentials' });
+  }
+
+  // Generate JWT token
+  const token = jwt.sign(
+    { email, role: 'super_admin' },
+    process.env.JWT_SECRET,
+    { expiresIn: '12h' }
+  );
+
+  return res.status(200).json({
+    message: 'Super admin login successful',
+    token,
+    role: 'super_admin',
+    email,
+  });
 }

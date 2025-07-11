@@ -35,7 +35,9 @@ app.use(express.json());
 // Initialize Firebase
 initializeFirebase();
 
+
 // API Routes
+
 app.use('/api/users', userRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/payment', paymentRoutes);    
@@ -54,6 +56,7 @@ app.use('/api/events', eventRoutes); // Add event routes
 app.use('/api/blockchain', blockchainRoutes); // Add event routes
 app.use('/api/ads', adRoutes); // Add event routes
 app.use('/api/luckydraws', luckyDrawRoutes); // Add lucky draw routes
+app.use('/api/admin', adminRoutes);
 
 
 app.get('/', (req, res) => {
