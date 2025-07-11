@@ -447,7 +447,7 @@ export const buyEntry = async (req, res) => {
 export const drawWinners = async (req, res) => {
   try {
     const db = admin.firestore();
-    const { eventId, winners } = req.body;
+    const { eventId, winners, position } = req.body; //////////////////////////////////////////
 
     // Validate input
     if (!eventId || !Array.isArray(winners) || winners.length === 0) {

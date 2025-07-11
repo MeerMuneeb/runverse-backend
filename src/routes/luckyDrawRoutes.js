@@ -45,7 +45,8 @@ router.post('/join', joinLuckyDraww);
 router.post('/buy-entry', buyEntry);
 
 // Route for admins to draw winners
-router.post('/draw/:eventId', drawWinners);
+// router.post('/draw/:eventId', drawWinners);
+router.post('/draw', drawWinners);
 
 
 router.post('/add-reward/:eventId', upload.single('picture'), addReward);
