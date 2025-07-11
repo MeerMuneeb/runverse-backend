@@ -22,7 +22,7 @@ import eventRoutes from './routes/eventRoutes.js'; // Import event routes
 import blockchainRoutes from './routes/blockchainRoutes.js'; // Import blockchain routes
 import adRoutes from './routes/adRoutes.js'; // Import ad routes
 import luckyDrawRoutes from './routes/luckyDrawRoutes.js'; // Import lucky draw routes
-import cors from 'cors';
+// import cors from 'cors';
 
 const app = express();
 
@@ -35,12 +35,6 @@ app.use(express.json());
 
 // Initialize Firebase
 initializeFirebase();
-
-app.use(cors({
-  origin: 'http://localhost:3000',  // Allow requests from your frontend
-  methods: ['GET', 'POST'],        // Allow methods
-  credentials: true,               // Allow cookies or authorization headers
-}));
 
 
 // API Routes
