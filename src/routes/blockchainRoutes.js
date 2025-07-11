@@ -10,7 +10,8 @@ import {
   updatePackageTokens,
   updateDistanceTokens,
   getTokenStats,
-  allocateTokensToUserController  
+  allocateTokensToUserController,
+  getAllWalletTransactions
 } from '../controllers/blockchainController.js';
 
 const router = express.Router();
@@ -26,6 +27,7 @@ router.put('/update/badges-tokens', updateBadgesTokens);
 router.put('/update/package-tokens', updatePackageTokens);
 router.put('/update/distance-tokens', updateDistanceTokens);
 router.post('/allocate-tokens', allocateTokensToUserController); // Allocate tokens to a user
+router.get('/wallet-transactions', getAllWalletTransactions); // Get all wallet transactions
 
 export default router;
 

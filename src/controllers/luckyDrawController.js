@@ -383,12 +383,79 @@ export const buyEntry = async (req, res) => {
 };
 
 // Admin draws the lucky draw (random selection of winners)
+// export const drawWinners = async (req, res) => {
+//   try {
+//     const db = admin.firestore();
+//     const { eventId } = req.params;
+
+//     const luckyDrawRef = db.collection(COLLECTION).where('eventId', '==', eventId);
+//     const snapshot = await luckyDrawRef.get();
+
+//     if (snapshot.empty) {
+//       return res.status(404).json({ message: 'Lucky draw not found for this event.' });
+//     }
+
+//     const luckyDraw = snapshot.docs[0];
+//     const participants = luckyDraw.data().participants;
+//     const numWinners = luckyDraw.data().numWinners;
+
+//     if (participants.length < numWinners) {
+//       return res.status(400).json({ message: 'Not enough participants for the draw.' });
+//     }
+
+//     // Select random winners
+//     const winners = getRandomParticipants(participants, numWinners);
+
+//     // Prepare winners with position and reward info
+//     const rewards = luckyDraw.data().rewards || [];
+//     const drawDate = luckyDraw.data().drawDate?.toDate?.() || new Date();
+//     const formattedDrawDate = drawDate.toISOString().split('T')[0];
+
+//     const winnersWithDetails = winners.map((userId, idx) => ({
+//       userId,
+//       position: idx + 1,
+//       reward: rewards[idx]?.title || null,
+//       drawDate: formattedDrawDate,
+//     }));
+
+//     // Prepare participants in the required format
+//     const participantsFormatted = participants.map(userId => ({ userId }));
+
+//     // Save to history collection
+//     await db.collection('luckyDrawHistory').add({
+//       eventId,
+//       winners: winnersWithDetails,
+//       participants: participantsFormatted,
+//       drawDate: formattedDrawDate,
+//       numWinners: luckyDraw.data().numWinners,
+//       maxEntries: luckyDraw.data().maxEntries,
+//       entryPrice: luckyDraw.data().entryPriceTokens || luckyDraw.data().entryPriceCurrency || null,
+//       createdAt: luckyDraw.data().createdAt?.toDate?.().toISOString().split('T')[0] || null,
+//       updatedAt: new Date().toISOString().split('T')[0],
+//     });
+
+//     // Delete the lucky draw after drawing winners
+//     await luckyDraw.ref.delete();
+
+//     res.status(200).json({ message: 'Lucky draw completed successfully', winners });
+//   } catch (error) {
+//     console.error('Failed to draw winners:', error);
+//     res.status(500).json({ message: 'Failed to draw winners' });
+//   }
+// };
+
 export const drawWinners = async (req, res) => {
   try {
     const db = admin.firestore();
-    const { eventId } = req.params;
+    const { eventId, winners } = req.body;
 
-    const luckyDrawRef = db.collection(COLLECTION).where('eventId', '==', eventId);
+    // Validate input
+    if (!eventId || !Array.isArray(winners) || winners.length === 0) {
+      return res.status(400).json({ message: 'Invalid input. eventId and winners array are required.' });
+    }
+
+    // Fetch the lucky draw document based on eventId
+    const luckyDrawRef = db.collection('luckyDraws').where('eventId', '==', eventId);
     const snapshot = await luckyDrawRef.get();
 
     if (snapshot.empty) {
@@ -396,38 +463,36 @@ export const drawWinners = async (req, res) => {
     }
 
     const luckyDraw = snapshot.docs[0];
-    const participants = luckyDraw.data().participants;
+    const participants = luckyDraw.data().participants || [];
     const numWinners = luckyDraw.data().numWinners;
 
     if (participants.length < numWinners) {
       return res.status(400).json({ message: 'Not enough participants for the draw.' });
     }
 
-    // Select random winners
-    const winners = getRandomParticipants(participants, numWinners);
+    // Validate winners array against the number of participants
+    if (winners.length !== numWinners) {
+      return res.status(400).json({ message: `The number of winners should be ${numWinners}.` });
+    }
 
-    // Prepare winners with position and reward info
-    const rewards = luckyDraw.data().rewards || [];
+    // Process winners and map them to positions
     const drawDate = luckyDraw.data().drawDate?.toDate?.() || new Date();
     const formattedDrawDate = drawDate.toISOString().split('T')[0];
 
-    const winnersWithDetails = winners.map((userId, idx) => ({
-      userId,
+    const winnersWithDetails = winners.map((winner, idx) => ({
+      userId: winner.uid,
       position: idx + 1,
-      reward: rewards[idx]?.title || null,
+      reward: winner.reward || 'No reward assigned',
       drawDate: formattedDrawDate,
     }));
 
-    // Prepare participants in the required format
-    const participantsFormatted = participants.map(userId => ({ userId }));
-
-    // Save to history collection
-    await db.collection('luckyDrawHistory').add({
+    // Save to the history collection
+    await db.collection('luckyDrawHistoryTest').add({   // Change collection name to 'luckyDrawHistoryTest'
       eventId,
       winners: winnersWithDetails,
-      participants: participantsFormatted,
+      participants: participants.map(userId => ({ userId })),
       drawDate: formattedDrawDate,
-      numWinners: luckyDraw.data().numWinners,
+      numWinners,
       maxEntries: luckyDraw.data().maxEntries,
       entryPrice: luckyDraw.data().entryPriceTokens || luckyDraw.data().entryPriceCurrency || null,
       createdAt: luckyDraw.data().createdAt?.toDate?.().toISOString().split('T')[0] || null,
@@ -435,14 +500,18 @@ export const drawWinners = async (req, res) => {
     });
 
     // Delete the lucky draw after drawing winners
-    await luckyDraw.ref.delete();
+    // await luckyDraw.ref.delete();
 
-    res.status(200).json({ message: 'Lucky draw completed successfully', winners });
+    return res.status(200).json({
+      message: 'Lucky draw completed successfully',
+      winners: winnersWithDetails,
+    });
   } catch (error) {
     console.error('Failed to draw winners:', error);
-    res.status(500).json({ message: 'Failed to draw winners' });
+    return res.status(500).json({ message: 'Failed to draw winners' });
   }
 };
+
 
 // Add a reward to the lucky draw
 export const addReward = async (req, res) => {

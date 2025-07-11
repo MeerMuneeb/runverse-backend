@@ -862,3 +862,89 @@ export async function getTokenStats(req, res) {
     return res.status(500).json({ error: 'Failed to retrieve token statistics' });
   }
 }
+
+
+/**
+ * Get all transactions from all user wallets with pagination and additional user info
+ */
+export async function getAllWalletTransactions(req, res) {
+  try {
+    const db = admin.firestore();
+
+    // Get page and limit from query params, default to 1 and 10 if not provided
+    const page = parseInt(req.query.page) 
+    const limit = parseInt(req.query.limit) 
+
+    // Calculate the number of documents to skip
+    const offset = (page - 1) * limit;
+
+    // Get the last transaction from the previous page to paginate (if page > 1)
+    let lastTransactionDate = null;
+    if (page > 1) {
+      const lastTransactionSnapshot = await db.collection('token_transactions')
+        .orderBy('createdAt', 'desc')
+        .limit(1)
+        .get();
+
+      if (!lastTransactionSnapshot.empty) {
+        lastTransactionDate = lastTransactionSnapshot.docs[0].data().createdAt;
+      }
+    }
+
+    // Fetch token transactions with Firestore pagination
+    let transactionsQuery = db.collection('token_transactions')
+      .orderBy('createdAt', 'desc')
+      .limit(limit); // Limit the number of documents per request
+
+    // If we're paginating, get transactions after the last fetched one
+    if (lastTransactionDate) {
+      transactionsQuery = transactionsQuery.startAfter(lastTransactionDate);
+    }
+
+    const transactionsSnapshot = await transactionsQuery.get();
+
+    if (transactionsSnapshot.empty) {
+      return res.status(404).json({ message: 'No transactions found' });
+    }
+
+    // Array to store formatted transactions
+    let allTransactions = [];
+
+    // Loop through the snapshot and format the transactions
+    transactionsSnapshot.forEach((transactionDoc) => {
+      const transaction = transactionDoc.data();
+      const transactionDate = transaction.createdAt || transaction.timestamp;
+
+      if (transactionDate) {
+        allTransactions.push({
+          userId: transaction.userId,
+          amount: transaction.amount,
+          reason: transaction.reason,
+          status: transaction.status || 'default',  // Default status if not provided
+          type: transaction.type,
+          date: transactionDate.toDate ? transactionDate.toDate() : transactionDate,  // Ensure to call .toDate() if it's Firestore Timestamp
+        });
+      } else {
+        console.warn(`Missing timestamp or createdAt for transaction ${transactionDoc.id}`);
+      }
+    });
+
+    // Sort transactions by date in descending order (already sorted by Firestore)
+    allTransactions.sort((a, b) => b.date - a.date);
+
+    // Apply pagination by slicing the sorted data
+    const paginatedTransactions = allTransactions.slice(offset, offset + limit);
+
+    return res.status(200).json({
+      message: 'Transactions retrieved successfully',
+      transactions: paginatedTransactions,
+    });
+
+  } catch (error) {
+    console.error('Error getting token transactions:', error);
+    return res.status(500).json({ error: 'Failed to retrieve token transactions' });
+  }
+}
+
+
+
