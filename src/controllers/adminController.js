@@ -213,28 +213,37 @@ export async function updateLastLogin(uid) {
 }
 
 
+// Assuming this is part of your backend's controller file, e.g., 'authController.js'
+
+// import jwt from 'jsonwebtoken'; // Make sure you have 'jsonwebtoken' installed and imported
+
 export async function loginSuperAdmin(req, res) {
   const { email, password } = req.body;
 
+  // Input validation
   if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required' });
+    return res.status(400).json({ message: 'Email and password are required' });
   }
 
-  // Check credentials against .env
+  // Check credentials against .env variables
+  // IMPORTANT: Ensure process.env.SUPER_ADMIN_EMAIL and process.env.SUPER_ADMIN_PASSWORD
+  // are correctly set in your backend's environment.
   if (
     email !== process.env.SUPER_ADMIN_EMAIL ||
     password !== process.env.SUPER_ADMIN_PASSWORD
   ) {
-    return res.status(401).json({ error: 'Invalid super admin credentials' });
+    return res.status(401).json({ message: 'Invalid super admin credentials' });
   }
 
   // Generate JWT token
+  // IMPORTANT: Ensure process.env.JWT_SECRET is set in your backend's environment.
   const token = jwt.sign(
     { email, role: 'super_admin' },
     process.env.JWT_SECRET,
-    { expiresIn: '12h' }
+    { expiresIn: '12h' } // Token expires in 12 hours
   );
 
+  // Successful login response
   return res.status(200).json({
     message: 'Super admin login successful',
     token,
