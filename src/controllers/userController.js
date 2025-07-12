@@ -140,7 +140,15 @@ export async function registerUser(req, res) {
 
     const fcmToken = userRecord.fcmToken; // You should store this token during the registration process
     if (fcmToken) {
-      await sendPushNotification(fcmToken, 'Welcome to Runverse!', 'Your account has been created successfully. As part of your registration, a store account has also been created for you. You can visit and access the Runverse store anytime directly from the app to explore exclusive products and offers.');
+      try {
+      await sendPushNotification(
+        fcmToken,
+        'Welcome to Runverse!',
+        'Your account has been created successfully. As part of your registration, a store account has also been created for you. You can visit and access the Runverse store anytime directly from the app to explore exclusive products and offers.'
+      );
+      } catch (err) {
+      // Do nothing if push notification fails
+      }
     }
 
     // Send Email Notification for Registration
@@ -215,29 +223,33 @@ export async function loginUser(req, res) {
     }
 
     // If fcmToken is provided in the request, update it in Firestore
-    if (fcmToken) {
+    try {
+      if (fcmToken) {
       const db = admin.firestore();
       await db.collection('users').doc(localId).update({ fcmToken });
 
       // Send notification if fcmToken is provided
       await sendPushNotification(fcmToken, 'Login Successful', 'Welcome back to Runverse!');
-    } else {
+      } else {
       // If no fcmToken in the request, try to fetch it from Firestore
       const db = admin.firestore();
       const userDoc = await db.collection('users').doc(localId).get();
-      
+
       if (userDoc.exists) {
         fcmToken = userDoc.data().fcmToken || '';
-        
+
         // If fcmToken found, send notification
         if (fcmToken) {
-          await sendPushNotification(fcmToken, 'Login Successful', 'Welcome back to Runverse!');
+        await sendPushNotification(fcmToken, 'Login Successful', 'Welcome back to Runverse!');
         } else {
-          console.log('No FCM token found in Firestore for this user');
+        console.log('No FCM token found in Firestore for this user');
         }
       } else {
         console.log('User not found in Firestore');
       }
+      }
+    } catch (error) {
+      console.error(error);
     }
 
     return res.status(200).json({
