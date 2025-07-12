@@ -85,7 +85,7 @@ export async function verifyWooToken(req, res) {
 // REGISTER USER
 export async function registerUser(req, res) {
   const db = admin.firestore();
-  const { email, password, name } = req.body;
+  let { email, password, name } = req.body;
 
   if (!email || !password || !name) {
     return res.status(400).json({ error: 'Email, password, and name are required' });
@@ -184,7 +184,7 @@ export async function registerUser(req, res) {
 
 // LOGIN USER
 export async function loginUser(req, res) {
-  const { email, password, fcmToken } = req.body;
+  let { email, password, fcmToken } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' });
@@ -212,25 +212,32 @@ export async function loginUser(req, res) {
       console.log(result.message);
     } catch (tokenError) {
       console.error('Token allocation failed:', tokenError);
-      // Optionally handle error or continue
     }
 
-    // Try to get fcmToken from response.data, otherwise fetch from Firestore
-    // let fcmToken = response.data.fcmToken;
     // If fcmToken is provided in the request, update it in Firestore
     if (fcmToken) {
       const db = admin.firestore();
       await db.collection('users').doc(localId).update({ fcmToken });
+
+      // Send notification if fcmToken is provided
+      await sendPushNotification(fcmToken, 'Login Successful', 'Welcome back to Runverse!');
     } else {
-      // If not provided, try to fetch from Firestore
+      // If no fcmToken in the request, try to fetch it from Firestore
       const db = admin.firestore();
       const userDoc = await db.collection('users').doc(localId).get();
+      
       if (userDoc.exists) {
-      fcmToken = userDoc.data().fcmToken || '';
+        fcmToken = userDoc.data().fcmToken || '';
+        
+        // If fcmToken found, send notification
+        if (fcmToken) {
+          await sendPushNotification(fcmToken, 'Login Successful', 'Welcome back to Runverse!');
+        } else {
+          console.log('No FCM token found in Firestore for this user');
+        }
+      } else {
+        console.log('User not found in Firestore');
       }
-    }
-    if (fcmToken) {
-      await sendPushNotification(fcmToken, 'Login Successful', 'Welcome back to Runverse!');
     }
 
     return res.status(200).json({
@@ -246,6 +253,7 @@ export async function loginUser(req, res) {
     });
   }
 }
+
 
 // OAUTH LOGIN
 export const oauthLogin = async (req, res) => {
