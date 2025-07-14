@@ -83,9 +83,115 @@ export async function verifyWooToken(req, res) {
 }
 
 // REGISTER USER
+// export async function registerUser(req, res) {
+//   const db = admin.firestore();
+//   let { email, password, name } = req.body;
+
+//   if (!email || !password || !name) {
+//     return res.status(400).json({ error: 'Email, password, and name are required' });
+//   }
+
+//   try {
+//     // Create user in Firebase Auth
+//     const userRecord = await admin.auth().createUser({
+//       email,
+//       password,
+//       displayName: name
+//     });
+
+//     const [firstName, ...lastParts] = name.trim().split(' ');
+//     const lastName = lastParts.length ? lastParts.join(' ') : '';
+
+//     // Create WooCommerce customer
+//     let wooCustomerId = null;
+//     try {
+//       wooCustomerId = await createWooCommerceCustomer(email, firstName, lastName, email.split('@')[0]);
+//     } catch (wooError) {
+//       console.error('WooCommerce customer creation failed:', wooError);
+//       // Optionally handle error or continue without wooCustomerId
+//     }
+
+//     // Create wallet for the user
+//     try {
+//       await createWallet(userRecord.uid);
+//       const result = await allocateTokensToUser(
+//         userRecord.uid,          // User's UID
+//         'registration',          // Category
+//         'Registration reward',   // Reason
+//         {}                       // Metadata (empty for registration)
+//       );
+//       console.log(result.message);
+//     } catch (walletError) {
+//       console.error('Wallet creation failed:', walletError);
+//       // Optionally handle error or continue
+//     }
+
+//     // Add to Firestore with incomplete status
+//     await db.collection('users').doc(userRecord.uid).set({
+//       email,
+//       name,
+//       status: 'inactive',
+//       paid: false,
+//       wooCustomerId,
+//       type: 'free',
+//       createdAt: admin.firestore.FieldValue.serverTimestamp(),
+//       fcmToken: userRecord.fcmToken || ''
+//     });
+
+//     const fcmToken = userRecord.fcmToken; // You should store this token during the registration process
+//     if (fcmToken) {
+//       try {
+//       await sendPushNotification(
+//         fcmToken,
+//         'Welcome to Runverse!',
+//         'Your account has been created successfully. As part of your registration, a store account has also been created for you. You can visit and access the Runverse store anytime directly from the app to explore exclusive products and offers.'
+//       );
+//       } catch (err) {
+//       // Do nothing if push notification fails
+//       }
+//     }
+
+//     // Send Email Notification for Registration
+//     const mailOptions = {
+//       from: process.env.EMAIL_USER,
+//       to: email,
+//       subject: 'Welcome to Runverse',
+//       html: `
+//       <div style="font-family: Arial, sans-serif; color: #333;">
+//         <h2>Welcome to Runverse!</h2>
+//         <p>Thank you for registering at Runverse. We are excited to have you on board.</p>
+//         <p>
+//         As part of your registration, a store account has also been created for you. 
+//         You can visit and access the Runverse store anytime directly from the app to explore exclusive products and offers.
+//         </p>
+//         <p>
+//         If you have any questions or need assistance, feel free to reply to this email.
+//         </p>
+//         <br>
+//         <p>Best regards,<br><strong>The Runverse Team</strong></p>
+//       </div>
+//       `,
+//     };
+
+//     await transporter.sendMail(mailOptions);
+
+//     return res.status(201).json({
+//       message: 'User registered successfully',
+//       uid: userRecord.uid,
+//       email: userRecord.email,
+//       name: userRecord.displayName,
+//       wooCustomerId,
+//       type: 'free',
+//       status: 'inactive',
+//     });
+//   } catch (err) {
+//     console.error('Registration error:', err);
+//     return res.status(500).json({ error: err.message });
+//   }
+// }
 export async function registerUser(req, res) {
   const db = admin.firestore();
-  let { email, password, name } = req.body;
+  let { email, password, name, fcmToken } = req.body; // Added fcmToken to destructuring
 
   if (!email || !password || !name) {
     return res.status(400).json({ error: 'Email, password, and name are required' });
@@ -102,16 +208,17 @@ export async function registerUser(req, res) {
     const [firstName, ...lastParts] = name.trim().split(' ');
     const lastName = lastParts.length ? lastParts.join(' ') : '';
 
-    // Create WooCommerce customer
+    // --- Create WooCommerce customer ---
     let wooCustomerId = null;
     try {
       wooCustomerId = await createWooCommerceCustomer(email, firstName, lastName, email.split('@')[0]);
     } catch (wooError) {
-      console.error('WooCommerce customer creation failed:', wooError);
-      // Optionally handle error or continue without wooCustomerId
+      console.error('WooCommerce customer creation failed:', wooError.message);
+      // Log the error but continue registration.
+      // You might want to notify an admin or retry this later.
     }
 
-    // Create wallet for the user
+    // --- Create wallet for the user and allocate registration tokens ---
     try {
       await createWallet(userRecord.uid);
       const result = await allocateTokensToUser(
@@ -122,36 +229,37 @@ export async function registerUser(req, res) {
       );
       console.log(result.message);
     } catch (walletError) {
-      console.error('Wallet creation failed:', walletError);
-      // Optionally handle error or continue
+      console.error('Wallet creation or token allocation failed:', walletError.message);
+      // Log the error but continue registration.
     }
 
-    // Add to Firestore with incomplete status
+    // --- Add user data to Firestore ---
     await db.collection('users').doc(userRecord.uid).set({
       email,
       name,
-      status: 'inactive',
+      status: 'inactive', // Or 'active' if you don't require email verification
       paid: false,
       wooCustomerId,
       type: 'free',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      fcmToken: userRecord.fcmToken || ''
+      fcmToken: fcmToken || '' // Use fcmToken from req.body, default to empty string
     });
 
-    const fcmToken = userRecord.fcmToken; // You should store this token during the registration process
+    // --- Send Push Notification (if fcmToken is provided) ---
     if (fcmToken) {
       try {
-      await sendPushNotification(
-        fcmToken,
-        'Welcome to Runverse!',
-        'Your account has been created successfully. As part of your registration, a store account has also been created for you. You can visit and access the Runverse store anytime directly from the app to explore exclusive products and offers.'
-      );
-      } catch (err) {
-      // Do nothing if push notification fails
+        await sendPushNotification(
+          fcmToken,
+          'Welcome to Runverse!',
+          'Your account has been created successfully. As part of your registration, a store account has also been created for you. You can visit and access the Runverse store anytime directly from the app to explore exclusive products and offers.'
+        );
+      } catch (pushError) {
+        console.error('Error sending welcome push notification:', pushError.message);
+        // Do nothing if push notification fails, as it's not critical for registration success.
       }
     }
 
-    // Send Email Notification for Registration
+    // --- Send Email Notification for Registration ---
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,
@@ -161,7 +269,7 @@ export async function registerUser(req, res) {
         <h2>Welcome to Runverse!</h2>
         <p>Thank you for registering at Runverse. We are excited to have you on board.</p>
         <p>
-        As part of your registration, a store account has also been created for you. 
+        As part of your registration, a store account has also been created for you.
         You can visit and access the Runverse store anytime directly from the app to explore exclusive products and offers.
         </p>
         <p>
@@ -173,7 +281,13 @@ export async function registerUser(req, res) {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    try {
+      await transporter.sendMail(mailOptions);
+    } catch (mailError) {
+      console.error('Error sending welcome email:', mailError.message);
+      // Log the error but continue registration, as email sending might be flaky.
+    }
+
 
     return res.status(201).json({
       message: 'User registered successfully',
@@ -184,13 +298,115 @@ export async function registerUser(req, res) {
       type: 'free',
       status: 'inactive',
     });
+
   } catch (err) {
     console.error('Registration error:', err);
-    return res.status(500).json({ error: err.message });
+
+    // Firebase Auth errors have a 'code' property
+    const firebaseErrorCode = err.code;
+
+    switch (firebaseErrorCode) {
+      case 'auth/email-already-in-use':
+        return res.status(409).json({
+          error: 'Email is already in use. Please use a different email or log in.',
+          code: 'EMAIL_ALREADY_IN_USE'
+        });
+      case 'auth/invalid-email':
+        return res.status(400).json({
+          error: 'The email address is not valid.',
+          code: 'INVALID_EMAIL'
+        });
+      case 'auth/weak-password':
+        return res.status(400).json({
+          error: 'The password is too weak. Please use a stronger password (min 6 characters).',
+          code: 'WEAK_PASSWORD'
+        });
+      default:
+        // Catch any other unexpected errors
+        return res.status(500).json({
+          error: err.message || 'An unexpected error occurred during registration. Please try again.',
+          code: firebaseErrorCode || 'UNEXPECTED_ERROR'
+        });
+    }
   }
 }
 
 // LOGIN USER
+// export async function loginUser(req, res) {
+//   let { email, password, fcmToken } = req.body;
+
+//   if (!email || !password) {
+//     return res.status(400).json({ error: 'Email and password are required' });
+//   }
+
+//   try {
+//     const response = await axios.post(
+//       `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${process.env.FB_API_KEY}`,
+//       {
+//         email,
+//         password,
+//         returnSecureToken: true,
+//       }
+//     );
+
+//     const { idToken, refreshToken, localId } = response.data;
+
+//     try {
+//       const result = await allocateTokensToUser(
+//         localId,         // User's UID
+//         'login',         // Category
+//         'Login reward',  // Reason
+//         {}               // Metadata (empty for login)
+//       );
+//       console.log(result.message);
+//     } catch (tokenError) {
+//       console.error('Token allocation failed:', tokenError);
+//     }
+
+//     // If fcmToken is provided in the request, update it in Firestore
+//     try {
+//       if (fcmToken) {
+//       const db = admin.firestore();
+//       await db.collection('users').doc(localId).update({ fcmToken });
+
+//       // Send notification if fcmToken is provided
+//       await sendPushNotification(fcmToken, 'Login Successful', 'Welcome back to Runverse!');
+//       } else {
+//       // If no fcmToken in the request, try to fetch it from Firestore
+//       const db = admin.firestore();
+//       const userDoc = await db.collection('users').doc(localId).get();
+
+//       if (userDoc.exists) {
+//         fcmToken = userDoc.data().fcmToken || '';
+
+//         // If fcmToken found, send notification
+//         if (fcmToken) {
+//         await sendPushNotification(fcmToken, 'Login Successful', 'Welcome back to Runverse!');
+//         } else {
+//         console.log('No FCM token found in Firestore for this user');
+//         }
+//       } else {
+//         console.log('User not found in Firestore');
+//       }
+//       }
+//     } catch (error) {
+//       console.error(error);
+//     }
+
+//     return res.status(200).json({
+//       message: 'Login successful',
+//       uid: localId,
+//       idToken,
+//       refreshToken,
+//     });
+//   } catch (err) {
+//     console.error('Login error:', err.response?.data || err.message);
+//     return res.status(401).json({
+//       error: err.response?.data?.error?.message || 'Invalid credentials',
+//     });
+//   }
+// }
+
 export async function loginUser(req, res) {
   let { email, password, fcmToken } = req.body;
 
@@ -209,47 +425,82 @@ export async function loginUser(req, res) {
     );
 
     const { idToken, refreshToken, localId } = response.data;
+    const db = admin.firestore(); // Initialize Firestore here
 
+    // --- Token Allocation (Login Reward) ---
     try {
       const result = await allocateTokensToUser(
-        localId,         // User's UID
-        'login',         // Category
-        'Login reward',  // Reason
-        {}               // Metadata (empty for login)
+        localId,          // User's UID
+        'login',          // Category
+        'Login reward',   // Reason
+        {}                // Metadata (empty for login)
       );
       console.log(result.message);
     } catch (tokenError) {
       console.error('Token allocation failed:', tokenError);
+      // Decide if you want to return an error here or continue with login.
+      // For now, it just logs and proceeds with login success.
     }
 
-    // If fcmToken is provided in the request, update it in Firestore
-    try {
-      if (fcmToken) {
-      const db = admin.firestore();
-      await db.collection('users').doc(localId).update({ fcmToken });
+    // --- Check and Create WooCommerce Customer ID if missing ---
+    let userDoc = await db.collection('users').doc(localId).get();
+    let wooCustomerId = userDoc.exists ? userDoc.data().wooCustomerId : null;
 
-      // Send notification if fcmToken is provided
-      await sendPushNotification(fcmToken, 'Login Successful', 'Welcome back to Runverse!');
-      } else {
-      // If no fcmToken in the request, try to fetch it from Firestore
-      const db = admin.firestore();
-      const userDoc = await db.collection('users').doc(localId).get();
+    if (!wooCustomerId) {
+      console.log(`WooCommerce ID missing for user ${localId}. Attempting to create.`);
+      try {
+        // Fetch user details from Firebase Auth to get displayName for WooCommerce
+        const authUserRecord = await admin.auth().getUser(localId);
+        const name = authUserRecord.displayName || '';
+        const [firstName, ...lastParts] = name.trim().split(' ');
+        const lastName = lastParts.length ? lastParts.join(' ') : '';
+        const username = authUserRecord.email.split('@')[0]; // Use part of email as username
 
-      if (userDoc.exists) {
-        fcmToken = userDoc.data().fcmToken || '';
+        wooCustomerId = await createWooCommerceCustomer(authUserRecord.email, firstName, lastName, username);
 
-        // If fcmToken found, send notification
-        if (fcmToken) {
-        await sendPushNotification(fcmToken, 'Login Successful', 'Welcome back to Runverse!');
-        } else {
-        console.log('No FCM token found in Firestore for this user');
-        }
-      } else {
-        console.log('User not found in Firestore');
+        // Update Firestore with the new wooCustomerId
+        await db.collection('users').doc(localId).update({ wooCustomerId });
+        console.log(`WooCommerce ID created and updated for user ${localId}: ${wooCustomerId}`);
+      } catch (wooError) {
+        console.error('Error creating WooCommerce customer during login:', wooError.message);
+        // Log the error but allow login to proceed.
+        // You might want to notify an admin or have a retry mechanism.
       }
+    } else {
+      console.log(`WooCommerce ID already exists for user ${localId}: ${wooCustomerId}`);
+    }
+
+
+    // --- FCM Token Update and Notification ---
+    try {
+      let notificationTokenToSend = fcmToken; // Initialize with provided fcmToken
+
+      if (fcmToken) {
+        // Update FCM token in Firestore if provided in the request
+        await db.collection('users').doc(localId).update({ fcmToken });
+      } else {
+        // If no fcmToken in the request, try to fetch it from Firestore
+        // Re-fetch userDoc if it was not found or if we need the latest data after wooCustomerId update
+        if (!userDoc.exists || !userDoc.data().fcmToken) { // Check if fcmToken was already in userDoc
+            userDoc = await db.collection('users').doc(localId).get();
+        }
+
+        if (userDoc.exists) {
+          notificationTokenToSend = userDoc.data().fcmToken || '';
+        } else {
+          console.log('User not found in Firestore for FCM token retrieval.');
+        }
+      }
+
+      // Send notification if a valid fcmToken is available
+      if (notificationTokenToSend) {
+        await sendPushNotification(notificationTokenToSend, 'Login Successful', 'Welcome back to Runverse!');
+      } else {
+        console.log('No FCM token found or provided for sending login notification.');
       }
     } catch (error) {
-      console.error(error);
+      console.error('Error handling FCM token or sending notification:', error);
+      // This error usually shouldn't prevent login success unless critical
     }
 
     return res.status(200).json({
@@ -257,15 +508,47 @@ export async function loginUser(req, res) {
       uid: localId,
       idToken,
       refreshToken,
+      wooCustomerId, // Include wooCustomerId in the response
     });
   } catch (err) {
     console.error('Login error:', err.response?.data || err.message);
-    return res.status(401).json({
-      error: err.response?.data?.error?.message || 'Invalid credentials',
-    });
+
+    const firebaseErrorCode = err.response?.data?.error?.message;
+
+    switch (firebaseErrorCode) {
+      case 'EMAIL_NOT_FOUND':
+        return res.status(401).json({
+          error: 'Profile does not exist. Please check your email or register.',
+          code: 'EMAIL_NOT_FOUND'
+        });
+      case 'INVALID_PASSWORD':
+        return res.status(401).json({
+          error: 'Wrong credentials. Please check your password.',
+          code: 'INVALID_PASSWORD'
+        });
+      case 'USER_DISABLED':
+        return res.status(403).json({
+          error: 'Your account has been disabled. Please contact support.',
+          code: 'USER_DISABLED'
+        });
+      case 'TOO_MANY_ATTEMPTS_TRY_LATER':
+        return res.status(429).json({
+          error: 'Too many failed login attempts. Please try again later.',
+          code: 'TOO_MANY_ATTEMPTS_TRY_LATER'
+        });
+      case 'INVALID_EMAIL':
+        return res.status(400).json({
+          error: 'Invalid email format.',
+          code: 'INVALID_EMAIL'
+        });
+      default:
+        return res.status(401).json({
+          error: firebaseErrorCode || 'An unexpected error occurred during login. Please try again.',
+          code: firebaseErrorCode || 'UNEXPECTED_ERROR'
+        });
+    }
   }
 }
-
 
 // OAUTH LOGIN
 export const oauthLogin = async (req, res) => {
@@ -782,6 +1065,18 @@ export async function updateUser(req, res) {
       console.log('Image uploaded successfully:', imageUrl);
     }
 
+      
+    if (userData.status) {
+      try {
+        const disableUser = (userData.status === 'inactive' || userData.status === 'disabled'); // Assuming 'inactive' or 'disabled' means the user should be disabled in Auth
+        await admin.auth().updateUser(uid, { disabled: disableUser });
+        console.log(`Firebase Auth user ${uid} status updated to disabled: ${disableUser}`);
+      } catch (authUpdateError) {
+        console.error(`Error updating Firebase Auth user status for ${uid}:`, authUpdateError.message);
+        // Log the error but don't stop the Firestore update
+      }
+    }
+
     // If gender, weight, and height are present, set status to active
     if (userData.gender || userData.weight || userData.height) {
       userData.status = 'active';
@@ -994,62 +1289,67 @@ export async function getAchievements(req, res) {
 // DISABLE (SOFT DELETE) USER PROFILE
 export async function disableUserProfile(req, res) {
   const db = admin.firestore();
-  const { uid } = req.params;
-
-  if (!uid) {
-    return res.status(400).json({ error: 'UID is required' });
-  }
-
   try {
-    // Disable the user in Firebase Auth
+    const { uid } = req.params;
+
+    if (!uid) {
+      return res.status(400).json({ error: 'UID is required.' });
+    }
+
+    // 1. Disable the user in Firebase Auth
+    // This prevents them from logging in but preserves their data.
     await admin.auth().updateUser(uid, { disabled: true });
+    console.log(`Successfully disabled user: ${uid} in Firebase Auth.`);
 
-    // Update the user's status in Firestore
-    await db.collection('users').doc(uid).update({ status: 'disabled' });
+    // 2. Update the user's status in Firestore to 'disabled'
+    // This is a "soft delete" that allows you to filter them out in your app.
+    const userRef = db.collection('users').doc(uid);
+    await userRef.update({ status: 'disabled' });
+    console.log(`Successfully marked user as disabled for UID: ${uid} in Firestore.`);
 
-    let userEmail;
-    if (!userEmail && uid) {
-      try {
+    // 3. (Optional) Send a confirmation email
+    try {
       const userRecord = await admin.auth().getUser(uid);
-      userEmail = userRecord.email;
-      } catch (fetchErr) {
-      console.error('Error fetching user email:', fetchErr);
-      // If unable to fetch email, skip sending email
-      userEmail = null;
+      if (userRecord.email) {
+        const mailOptions = {
+          from: process.env.EMAIL_USER,
+          to: userRecord.email,
+          subject: 'Your Runverse Account Has Been Disabled',
+          html: `
+          <div style="font-family: Arial, sans-serif; color: #333;">
+            <h2>Account Disabled</h2>
+            <p>Dear User,</p>
+            <p>
+            This is to confirm that your Runverse account has been disabled as per your request.
+            </p>
+            <p>
+            Your data is preserved, but you will not be able to log in. If you wish to reactivate your account, please contact support.
+            </p>
+            <p>
+            If you have any questions or believe this was a mistake, please contact our support team.
+            </p>
+            <br>
+            <p>Best regards,<br><strong>The Runverse Team</strong></p>
+          </div>
+          `,
+        };
+        await transporter.sendMail(mailOptions);
+        console.log(`Disabled confirmation email sent to ${userRecord.email}`);
       }
+    } catch (emailError) {
+      console.warn(`Could not send disabled confirmation email for UID ${uid}:`, emailError);
     }
 
-    if (userEmail) {
-      const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: userEmail,
-      subject: 'Your Runverse Account Has Been Deleted',
-      html: `
-      <div style="font-family: Arial, sans-serif; color: #333;">
-        <h2>Account Deletion Confirmation</h2>
-        <p>Dear User,</p>
-        <p>
-        This is to confirm that your Runverse account has been successfully deleted as per your request.
-        </p>
-        <p>
-        We appreciate the time you spent with us and thank you for being a part of the Runverse community.
-        </p>
-        <p>
-        If you have any questions or believe this was a mistake, please contact our support team.
-        </p>
-        <br>
-        <p>Best regards,<br><strong>The Runverse Team</strong></p>
-      </div>
-      `,
-      };
-
-      await transporter.sendMail(mailOptions);
-    }
-
-    return res.status(200).json({ message: 'User profile disabled successfully' });
+    res.status(200).json({ message: 'User disabled successfully' });
   } catch (error) {
-    console.error('Error disabling user profile:', error);
-    return res.status(500).json({ error: 'Failed to disable user profile' });
+    console.error(`Error disabling user ${uid}:`, error);
+
+    // Handle cases where the user might not exist
+    if (error.code === 'auth/user-not-found') {
+      return res.status(404).json({ error: 'User not found', details: error.message });
+    }
+
+    res.status(500).json({ error: 'Failed to disable user', details: error.message });
   }
 }
 
