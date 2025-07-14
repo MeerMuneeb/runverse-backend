@@ -527,6 +527,28 @@ export async function loginUser(req, res) {
           code: 'INVALID_PASSWORD'
         });
       case 'USER_DISABLED':
+        // Send email notification to the user about their disabled account
+        try {
+          const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: email, // Send email to the user who tried to log in
+            subject: 'Account Disabled - Runverse',
+            html: `
+            <div style="font-family: Arial, sans-serif; color: #333;">
+              <h2>Your Runverse Account Has Been Disabled</h2>
+              <p>Dear User,</p>
+              <p>We regret to inform you that your account associated with the email address <strong>${email}</strong> has been disabled.</p>
+              <p>If you believe this is an error or would like to reactivate your account, please contact our support team for assistance.</p>
+              <p>Best regards,<br><strong>The Runverse Team</strong></p>
+            </div>
+            `,
+          };
+          await transporter.sendMail(mailOptions);
+          console.log(`Disabled account email sent to ${email}`);
+        } catch (mailError) {
+          console.error('Error sending disabled account email:', mailError.message);
+          // Log the error but continue to send the API response
+        }
         return res.status(403).json({
           error: 'Your account has been disabled. Please contact support.',
           code: 'USER_DISABLED'
