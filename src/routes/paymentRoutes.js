@@ -1,5 +1,10 @@
 import express from 'express';
-import { createCheckoutSession, createPaymentIntent, createPaymentSheet, payWithWallet } from '../controllers/paymentController.js';
+import { 
+    // createCheckoutSession,
+    // createPaymentIntent, 
+    createPaymentSheet, 
+    payWithWallet 
+} from '../controllers/paymentController.js';
 
 const router = express.Router();
 
