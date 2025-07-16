@@ -8,6 +8,8 @@ const eventSchema = new mongoose.Schema({
   endDate: { type: Date, required: true },
   description: { type: String, default: '' },
   location: { type: String, default: '' },
+  scanDescription: { type: String, default: '' }, // newly added
+  scanUrl: { type: String, default: '' },         // newly added
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

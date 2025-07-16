@@ -162,13 +162,10 @@
 
 
 
-import admin from '../config/firebase.js';
+// MongoDB-based Achievement Controller
+import Achievement from '../models/Achievement.js';
 
-const COLLECTION = 'achievements';
-
-// ✅ CREATE
 export const createAchievement = async (req, res) => {
-  const db = admin.firestore();
   const { name, 'pkg-id': pkgIdDash, pkg_id, milestones, status = 'active' } = req.body;
   const pkgId = pkg_id || pkgIdDash;
 
@@ -177,41 +174,37 @@ export const createAchievement = async (req, res) => {
   }
 
   try {
-    const existing = await db.collection(COLLECTION).where('pkg_id', '==', pkgId).limit(1).get();
-    if (!existing.empty) {
+    const existing = await Achievement.findOne({ pkg_id: pkgId });
+    if (existing) {
       return res.status(409).json({ error: 'Achievement with this pkg_id already exists' });
     }
 
-    const newAchievement = {
+    const newAchievement = new Achievement({
       name,
       pkg_id: pkgId,
       milestone_count: milestones.length,
       milestones,
       status,
-      created_at: admin.firestore.FieldValue.serverTimestamp(),
-    };
+    });
 
-    const docRef = await db.collection(COLLECTION).add(newAchievement);
-    res.status(201).json({ id: docRef.id, ...newAchievement });
+    const saved = await newAchievement.save();
+    res.status(201).json(saved);
   } catch (error) {
     console.error('Error creating achievement:', error);
     res.status(500).json({ error: 'Failed to create achievement' });
   }
 };
 
-// ✅ GET ALL
 export const getAchievements = async (req, res) => {
-  const db = admin.firestore();
   const pkgId = req.query.pkg_id || req.query['pkg-id'];
   const { status } = req.query;
 
   try {
-    let query = db.collection(COLLECTION);
-    if (status) query = query.where('status', '==', status);
-    if (pkgId) query = query.where('pkg_id', '==', pkgId);
+    const filter = {};
+    if (status) filter.status = status;
+    if (pkgId) filter.pkg_id = pkgId;
 
-    const snapshot = await query.get();
-    const achievements = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const achievements = await Achievement.find(filter).lean();
     res.status(200).json(achievements);
   } catch (error) {
     console.error('Error fetching achievements:', error);
@@ -219,31 +212,22 @@ export const getAchievements = async (req, res) => {
   }
 };
 
-// ✅ GET BY ID
 export const getAchievementById = async (req, res) => {
-  const db = admin.firestore();
   const { id } = req.params;
-
   try {
-    const doc = await db.collection(COLLECTION).doc(id).get();
-    if (!doc.exists) {
-      return res.status(404).json({ error: 'Achievement not found' });
-    }
-
-    res.status(200).json({ id: doc.id, ...doc.data() });
+    const achievement = await Achievement.findById(id).lean();
+    if (!achievement) return res.status(404).json({ error: 'Achievement not found' });
+    res.status(200).json(achievement);
   } catch (error) {
     console.error('Error fetching achievement:', error);
     res.status(500).json({ error: 'Failed to fetch achievement' });
   }
 };
 
-// ✅ UPDATE
 export const updateAchievement = async (req, res) => {
-  const db = admin.firestore();
   const { id } = req.params;
   const updates = { ...req.body };
 
-  // Normalize possible dash-case keys
   if ('pkg-id' in updates) {
     updates.pkg_id = updates['pkg-id'];
     delete updates['pkg-id'];
@@ -254,35 +238,20 @@ export const updateAchievement = async (req, res) => {
   }
 
   try {
-    const docRef = db.collection(COLLECTION).doc(id);
-    const doc = await docRef.get();
-
-    if (!doc.exists) {
-      return res.status(404).json({ error: 'Achievement not found' });
-    }
-
-    await docRef.update(updates);
-    res.status(200).json({ id, ...updates });
+    const updated = await Achievement.findByIdAndUpdate(id, updates, { new: true });
+    if (!updated) return res.status(404).json({ error: 'Achievement not found' });
+    res.status(200).json(updated);
   } catch (error) {
     console.error('Error updating achievement:', error);
     res.status(500).json({ error: 'Failed to update achievement' });
   }
 };
 
-// ✅ DELETE
 export const deleteAchievement = async (req, res) => {
-  const db = admin.firestore();
   const { id } = req.params;
-
   try {
-    const docRef = db.collection(COLLECTION).doc(id);
-    const doc = await docRef.get();
-
-    if (!doc.exists) {
-      return res.status(404).json({ error: 'Achievement not found' });
-    }
-
-    await docRef.delete();
+    const deleted = await Achievement.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ error: 'Achievement not found' });
     res.status(200).json({ message: 'Achievement deleted successfully' });
   } catch (error) {
     console.error('Error deleting achievement:', error);
@@ -290,22 +259,15 @@ export const deleteAchievement = async (req, res) => {
   }
 };
 
-// ✅ GET BY pkgId (Route: /achievements/pkg/:pkgId)
 export const getAchievementsByPkgId = async (req, res) => {
-  const db = admin.firestore();
   const { pkgId } = req.params;
-
-  if (!pkgId) {
-    return res.status(400).json({ error: 'pkgId is required' });
-  }
+  if (!pkgId) return res.status(400).json({ error: 'pkgId is required' });
 
   try {
-    const snapshot = await db.collection(COLLECTION).where('pkg_id', '==', pkgId).get();
-    if (snapshot.empty) {
+    const achievements = await Achievement.find({ pkg_id: pkgId }).lean();
+    if (!achievements.length) {
       return res.status(404).json({ message: 'No achievements found for this pkgId' });
     }
-
-    const achievements = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     res.status(200).json(achievements);
   } catch (error) {
     console.error('Error fetching achievements by pkg_id:', error);

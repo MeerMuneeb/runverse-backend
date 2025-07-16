@@ -7,55 +7,63 @@ const HistorySchema = new mongoose.Schema({
     index: true
   },
   name: String,
+
   map: {
     id: String,
     name: String,
-    area_type: String,
+    area_type: String
   },
+
   package: {
     id: String,
-    name: String,
+    name: String
   },
+
   payment_data: {
     type: mongoose.Schema.Types.Mixed,
-    default: {},
+    default: {}
   },
-  rewards: [
-    {
-      id: String,
-      name: String,
-    }
-  ],
-  spinners: [
-    {
-      id: String,
-      name: String,
-    }
-  ],
-  badges: [
-    {
-      id: String,
-      name: String,
-    }
-  ],
+
+  rewards: [{
+    id: String,
+    name: String
+  }],
+
+  spinners: [{
+    id: String,
+    name: String
+  }],
+
+  badges: [{
+    id: String,
+    name: String
+  }],
+
   goal: {
-    type: mongoose.Schema.Types.Mixed,
-    default: null,
+    type: Number,
+    default: 0
   },
+
   team: {
     id: String,
     name: String,
-    members: [String],
+    members: {
+      type: mongoose.Schema.Types.Mixed,
+      default: 0 // can be number or array depending on use
+    }
   },
+
   stats: {
     distance: { type: Number, default: 0 },
     duration: { type: Number, default: 0 },
     calories: { type: Number, default: 0 },
     steps: { type: Number, default: 0 },
-    race: { type: mongoose.Schema.Types.Mixed, default: null },
+    race: { type: String, default: null }
   },
+
   completedMilestones: { type: Number, default: 0 },
   totalMilestones: { type: Number, default: 0 },
+
   createdAt: {
     type: Date,
     default: Date.now

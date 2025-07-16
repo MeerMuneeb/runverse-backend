@@ -12,7 +12,6 @@ const RouteSchema = new mongoose.Schema({
 }, { _id: false });
 
 const MapSchema = new mongoose.Schema({
-  id: { type: String, required: true },
   area_type: { type: String, enum: ['indoor', 'outdoor'], required: true },
   name: { type: String },
   img: { type: String },

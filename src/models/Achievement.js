@@ -1,9 +1,11 @@
 import mongoose from 'mongoose';
 
 const milestoneSchema = new mongoose.Schema({
-  title: String,
-  description: String,
-  target: Number,
+  milestone_name: { type: String, required: true }, // was 'title'
+  milestone_point: { type: Number, required: true }, // was 'target'
+  reward_id: { type: String, default: '' },
+  badge_id: { type: String, default: '' },
+  spinner_id: { type: String, default: '' },
 }, { _id: false });
 
 const achievementSchema = new mongoose.Schema({

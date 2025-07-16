@@ -7,6 +7,7 @@ const badgeSchema = new mongoose.Schema({
   status: { type: String, default: 'active' },
   tokens: { type: Number },
   created_at: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }, // ✅ Added
 });
 
 export default mongoose.model('Badge', badgeSchema);

@@ -10,6 +10,12 @@ const packageSchema = new mongoose.Schema({
   desc: { type: String, default: '' },
   eventId: { type: String, required: true },
   status: { type: String, default: 'active' },
+  tokens: { type: Number, default: 0 },        // 💡 NEW: number of tokens given
+  mvtPrice: { type: Number, default: 0 },      // 💡 NEW: alternate price used in Stripe
+  updatedAt: {
+    _seconds: { type: Number },
+    _nanoseconds: { type: Number }
+  }                                           // 💡 NEW: Firestore-compatible timestamp
 });
 
 export default mongoose.model('Package', packageSchema);

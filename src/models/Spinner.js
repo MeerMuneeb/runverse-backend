@@ -1,9 +1,9 @@
 import mongoose from 'mongoose';
 
 const itemSchema = new mongoose.Schema({
-  name: { type: String, required: true },
+  item_name: { type: String, required: true },
   reward_id: { type: String, required: true },
-});
+}, { _id: false });
 
 const spinnerSchema = new mongoose.Schema({
   name: { type: String, required: true },
