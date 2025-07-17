@@ -112,7 +112,7 @@ const generateFirestoreTimestamp = (date = new Date()) => ({
 // ✅ Create Map
 export const createMap = async (req, res) => {
   try {
-    const { id, area_type, name, eventId, routes = [], coordinates = [] } = req.body;
+    const {area_type, name, eventId, routes = [], coordinates = [] } = req.body;
     let img;
 
     if (req.file) {
@@ -120,18 +120,15 @@ export const createMap = async (req, res) => {
       console.log('Image uploaded successfully:', img);
     }
 
-    if (!id || !area_type || !name || !img || !eventId) {
+    if (!area_type || !name || !img || !eventId) {
       return res.status(400).json({ message: 'Invalid input data' });
     }
 
     const newMap = new Map({
-      id,
       area_type,
       name,
       img,
       eventId,
-      routes,
-      coordinates,
       created_at: generateFirestoreTimestamp(),
     });
 
@@ -165,7 +162,7 @@ export const getMaps = async (req, res) => {
 export const getMapById = async (req, res) => {
   try {
     const { id } = req.params;
-    const map = await Map.findOne({ id }).lean();
+    const map = await Map.findOne({ _id:id }).lean();
     if (!map) {
       return res.status(404).json({ message: 'Map not found' });
     }
@@ -187,7 +184,7 @@ export const updateMap = async (req, res) => {
       console.log('Image uploaded successfully:', updates.img);
     }
 
-    const updated = await Map.findOneAndUpdate({ id }, updates, { new: true });
+    const updated = await Map.findOneAndUpdate({ _id:id }, updates, { new: true });
     if (!updated) {
       return res.status(404).json({ message: 'Map not found' });
     }
@@ -203,7 +200,7 @@ export const updateMap = async (req, res) => {
 export const deleteMap = async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await Map.findOneAndDelete({ id });
+    const deleted = await Map.findOneAndDelete({ _id:id });
     if (!deleted) {
       return res.status(404).json({ message: 'Map not found' });
     }

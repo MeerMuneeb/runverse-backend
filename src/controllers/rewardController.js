@@ -1,4 +1,4 @@
-// import admin from '../config/firebase.js';
+import admin from '../config/firebase.js';
 // import jwt from 'jsonwebtoken';
 // import dotenv from "dotenv";
 

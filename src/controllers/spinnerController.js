@@ -173,15 +173,14 @@ import admin from '../config/firebase.js'; // used for redeemSpinner only
 // Create Spinner
 export const createSpinner = async (req, res) => {
   try {
-    const { name, pkg_id, items = [] } = req.body;
-    if (!name || !pkg_id || !Array.isArray(items)) {
+    const { name, pkg_id} = req.body;
+    if (!name || !pkg_id) {
       return res.status(400).json({ message: 'Invalid input data' });
     }
 
     const newSpinner = new Spinner({
       name,
       pkg_id,
-      items,
       status: 'active',
     });
 
