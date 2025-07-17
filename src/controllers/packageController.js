@@ -202,6 +202,7 @@ export async function getPackages(req, res) {
 
     const packages = await Package.find(filter).lean();
     const formatted = packages.map(pkg => ({
+      id: pkg._id, // Rename _id to id
       ...pkg,
       price: pkg.price / 100, // cents to dollars
     }));
@@ -212,6 +213,7 @@ export async function getPackages(req, res) {
     res.status(500).json({ error: 'Failed to fetch packages' });
   }
 }
+
 
 // Get package by ID
 export async function getPackageById(req, res) {
