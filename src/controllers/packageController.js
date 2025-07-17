@@ -217,52 +217,71 @@ export async function getPackages(req, res) {
 
 // Get package by ID
 export async function getPackageById(req, res) {
-  const { id } = req.params;
+  // Check if the 'id' or '_id' is present in params and normalize to '_id'
+  const { id, _id } = req.params;
+  const packageId = id || _id;
 
   try {
-    const pkg = await Package.findById(id).lean();
+    const pkg = await Package.findById(packageId).lean();
 
     if (!pkg) {
       return res.status(404).json({ error: 'Package not found' });
     }
 
-    res.status(200).json({ ...pkg, price: pkg.price / 100 });
+    // Send the package with price in dollars
+    res.status(200).json({ ...pkg, id: pkg._id.toString(), price: pkg.price / 100 });
   } catch (error) {
     console.error('Error fetching package by ID:', error);
     res.status(500).json({ error: 'Failed to fetch package' });
   }
 }
 
+
 // Update package
 export async function updatePackage(req, res) {
-  const { id } = req.params;
+  const { id, _id } = req.params;
+  const packageId = id || _id;  // Normalize to use the right identifier
   const updateData = { ...req.body };
 
   try {
     if (updateData.price) {
-      updateData.price = Math.round(updateData.price * 100); // dollars to cents
+      updateData.price = Math.round(updateData.price * 100); // Convert dollars to cents
     }
 
-    await Package.findByIdAndUpdate(id, updateData);
-    res.status(200).json({ message: 'Package updated successfully' });
+    // Update the package by the normalized id (_id)
+    const updatedPackage = await Package.findByIdAndUpdate(packageId, updateData, { new: true });
+
+    if (!updatedPackage) {
+      return res.status(404).json({ error: 'Package not found' });
+    }
+
+    res.status(200).json({ message: 'Package updated successfully', updatedPackage });
   } catch (error) {
     console.error('Error updating package:', error);
     res.status(500).json({ error: 'Failed to update package' });
   }
 }
 
+
 // Delete package
 export async function deletePackage(req, res) {
-  const { id } = req.params;
+  const { id, _id } = req.params;
+  const packageId = id || _id;  // Normalize to use the correct identifier
 
   try {
-    await Package.findByIdAndDelete(id);
+    const deletedPackage = await Package.findByIdAndDelete(packageId);
+
+    if (!deletedPackage) {
+      return res.status(404).json({ error: 'Package not found' });
+    }
+
     res.status(200).json({ message: 'Package deleted successfully' });
   } catch (error) {
     console.error('Error deleting package:', error);
     res.status(500).json({ error: 'Failed to delete package' });
   }
 }
+
 
 // Get unique active distances
 export async function getUniqueDistances(req, res) {
