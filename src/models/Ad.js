@@ -26,6 +26,13 @@ const adSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
 });
 
+adSchema.pre('save', function(next) {
+  if (!this.id) {
+    this.id = this._id.toString();  // Set 'id' to MongoDB's '_id'
+  }
+  next();
+});
+
 const Ad = mongoose.model('Ad', adSchema);
 
 // ✅ Ad click rate setting schema

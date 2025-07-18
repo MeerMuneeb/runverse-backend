@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const HistorySchema = new mongoose.Schema({
+  id: { type: String },  // Add custom 'id' field for the main document
   uid: {
     type: String,
     required: true,
@@ -68,6 +69,14 @@ const HistorySchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
+});
+
+// Pre-save hook to set 'id' as '_id' for the main document only
+HistorySchema.pre('save', function(next) {
+  if (!this.id) {
+    this.id = this._id.toString();  // Set 'id' to MongoDB's '_id' for the main document
+  }
+  next();
 });
 
 export default mongoose.model('UserHistory', HistorySchema);

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const packageSchema = new mongoose.Schema({
+  id: { type: String }, // Add custom 'id' field
   name: { type: String, required: true },
   distance: { type: String, required: true },
   type: { type: String, required: true, enum: ['team', 'individual'] },
@@ -16,6 +17,14 @@ const packageSchema = new mongoose.Schema({
     _seconds: { type: Number },
     _nanoseconds: { type: Number }
   }                                           // 💡 NEW: Firestore-compatible timestamp
+});
+
+// Pre-save hook to set 'id' as '_id'
+packageSchema.pre('save', function(next) {
+  if (!this.id) {
+    this.id = this._id.toString();  // Set 'id' to MongoDB's '_id'
+  }
+  next();
 });
 
 export default mongoose.model('Package', packageSchema);

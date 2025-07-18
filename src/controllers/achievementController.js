@@ -205,27 +205,47 @@ export const getAchievements = async (req, res) => {
     if (pkgId) filter.pkg_id = pkgId;
 
     const achievements = await Achievement.find(filter).lean();
-    res.status(200).json(achievements);
+
+    // Map achievements to rename _id to id
+    const formattedAchievements = achievements.map(achievement => ({
+      id: achievement._id.toString(), // Rename _id to id and convert it to a string
+      ...achievement,
+    }));
+
+    res.status(200).json(formattedAchievements);
   } catch (error) {
     console.error('Error fetching achievements:', error);
     res.status(500).json({ error: 'Failed to fetch achievements' });
   }
 };
 
+
 export const getAchievementById = async (req, res) => {
-  const { id } = req.params;
+  // Normalize to handle both 'id' and '_id'
+  const { id, _id } = req.params;
+  const achievementId = id || _id; // Use id or _id based on what is provided
+
   try {
-    const achievement = await Achievement.findById(id).lean();
+    const achievement = await Achievement.findById(achievementId).lean();
     if (!achievement) return res.status(404).json({ error: 'Achievement not found' });
-    res.status(200).json(achievement);
+
+    // Rename _id to id in the response
+    const formattedAchievement = {
+      id: achievement._id.toString(), // Convert _id to id
+      ...achievement,
+    };
+
+    res.status(200).json(formattedAchievement);
   } catch (error) {
     console.error('Error fetching achievement:', error);
     res.status(500).json({ error: 'Failed to fetch achievement' });
   }
 };
 
+
 export const updateAchievement = async (req, res) => {
-  const { id } = req.params;
+  const { id, _id } = req.params;
+  const achievementId = id || _id; // Normalize to handle both 'id' and '_id'
   const updates = { ...req.body };
 
   if ('pkg-id' in updates) {
@@ -238,7 +258,7 @@ export const updateAchievement = async (req, res) => {
   }
 
   try {
-    const updated = await Achievement.findByIdAndUpdate(id, updates, { new: true });
+    const updated = await Achievement.findByIdAndUpdate(achievementId, updates, { new: true });
     if (!updated) return res.status(404).json({ error: 'Achievement not found' });
     res.status(200).json(updated);
   } catch (error) {
@@ -248,9 +268,11 @@ export const updateAchievement = async (req, res) => {
 };
 
 export const deleteAchievement = async (req, res) => {
-  const { id } = req.params;
+  const { id, _id } = req.params;
+  const achievementId = id || _id; // Normalize to handle both 'id' and '_id'
+
   try {
-    const deleted = await Achievement.findByIdAndDelete(id);
+    const deleted = await Achievement.findByIdAndDelete(achievementId);
     if (!deleted) return res.status(404).json({ error: 'Achievement not found' });
     res.status(200).json({ message: 'Achievement deleted successfully' });
   } catch (error) {
@@ -259,16 +281,25 @@ export const deleteAchievement = async (req, res) => {
   }
 };
 
+
 export const getAchievementsByPkgId = async (req, res) => {
   const { pkgId } = req.params;
   if (!pkgId) return res.status(400).json({ error: 'pkgId is required' });
 
   try {
     const achievements = await Achievement.find({ pkg_id: pkgId }).lean();
+    
     if (!achievements.length) {
       return res.status(404).json({ message: 'No achievements found for this pkgId' });
     }
-    res.status(200).json(achievements);
+
+    // Map achievements to rename _id to id
+    const formattedAchievements = achievements.map(achievement => ({
+      id: achievement._id.toString(), // Rename _id to id and convert to string
+      ...achievement,
+    }));
+
+    res.status(200).json(formattedAchievements);
   } catch (error) {
     console.error('Error fetching achievements by pkg_id:', error);
     res.status(500).json({ error: 'Failed to fetch achievements' });
