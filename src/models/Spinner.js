@@ -19,7 +19,7 @@ itemSchema.pre('save', function(next) {
 const spinnerSchema = new mongoose.Schema({
   id: { type: String },  // Add custom 'id' field for Spinner
   name: { type: String, required: true },
-  pkg_id: { type: String, required: true },
+  // pkg_id: { type: String, required: true },
   status: { type: String, default: 'active' },
   items: { type: [itemSchema], default: [] },
   created_at: { type: Date, default: Date.now },
