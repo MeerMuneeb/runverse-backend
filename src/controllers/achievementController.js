@@ -165,12 +165,21 @@
 // MongoDB-based Achievement Controller
 import Achievement from '../models/Achievement.js';
 
+// CREATE
 export const createAchievement = async (req, res) => {
-  const { name, 'pkg-id': pkgIdDash, pkg_id, milestones, status = 'active' } = req.body;
+  const {
+    name,
+    'pkg-id': pkgIdDash,
+    pkg_id,
+    milestones = [],
+    qr_milestones = [],
+    status = 'active',
+  } = req.body;
+
   const pkgId = pkg_id || pkgIdDash;
 
-  if (!name || !pkgId || !Array.isArray(milestones) || milestones.length === 0) {
-    return res.status(400).json({ error: 'Name, pkg_id (or pkg-id), and milestones are required' });
+  if (!name || !pkgId) {
+    return res.status(400).json({ error: 'Name and pkg_id (or pkg-id) are required' });
   }
 
   try {
@@ -183,7 +192,9 @@ export const createAchievement = async (req, res) => {
       name,
       pkg_id: pkgId,
       milestone_count: milestones.length,
+      qr_milestone_count: qr_milestones.length,
       milestones,
+      qr_milestones,
       status,
     });
 
@@ -195,6 +206,7 @@ export const createAchievement = async (req, res) => {
   }
 };
 
+// GET ALL
 export const getAchievements = async (req, res) => {
   const pkgId = req.query.pkg_id || req.query['pkg-id'];
   const { status } = req.query;
@@ -206,9 +218,8 @@ export const getAchievements = async (req, res) => {
 
     const achievements = await Achievement.find(filter).lean();
 
-    // Map achievements to rename _id to id
     const formattedAchievements = achievements.map(achievement => ({
-      id: achievement._id.toString(), // Rename _id to id and convert it to a string
+      id: achievement._id.toString(),
       ...achievement,
     }));
 
@@ -219,35 +230,34 @@ export const getAchievements = async (req, res) => {
   }
 };
 
-
+// GET BY ID
 export const getAchievementById = async (req, res) => {
-  // Normalize to handle both 'id' and '_id'
   const { id, _id } = req.params;
-  const achievementId = id || _id; // Use id or _id based on what is provided
+  const achievementId = id || _id;
 
   try {
     const achievement = await Achievement.findById(achievementId).lean();
     if (!achievement) return res.status(404).json({ error: 'Achievement not found' });
 
-    // Rename _id to id in the response
-    const formattedAchievement = {
-      id: achievement._id.toString(), // Convert _id to id
+    const formatted = {
+      id: achievement._id.toString(),
       ...achievement,
     };
 
-    res.status(200).json(formattedAchievement);
+    res.status(200).json(formatted);
   } catch (error) {
     console.error('Error fetching achievement:', error);
     res.status(500).json({ error: 'Failed to fetch achievement' });
   }
 };
 
-
+// UPDATE
 export const updateAchievement = async (req, res) => {
   const { id, _id } = req.params;
-  const achievementId = id || _id; // Normalize to handle both 'id' and '_id'
+  const achievementId = id || _id;
   const updates = { ...req.body };
 
+  // Normalize dash-case to camelCase
   if ('pkg-id' in updates) {
     updates.pkg_id = updates['pkg-id'];
     delete updates['pkg-id'];
@@ -255,6 +265,18 @@ export const updateAchievement = async (req, res) => {
   if ('milestone-count' in updates) {
     updates.milestone_count = updates['milestone-count'];
     delete updates['milestone-count'];
+  }
+  if ('qr-milestone-count' in updates) {
+    updates.qr_milestone_count = updates['qr-milestone-count'];
+    delete updates['qr-milestone-count'];
+  }
+
+  // Auto-update counts based on array lengths if provided
+  if (Array.isArray(updates.milestones)) {
+    updates.milestone_count = updates.milestones.length;
+  }
+  if (Array.isArray(updates.qr_milestones)) {
+    updates.qr_milestone_count = updates.qr_milestones.length;
   }
 
   try {
@@ -267,9 +289,10 @@ export const updateAchievement = async (req, res) => {
   }
 };
 
+// DELETE
 export const deleteAchievement = async (req, res) => {
   const { id, _id } = req.params;
-  const achievementId = id || _id; // Normalize to handle both 'id' and '_id'
+  const achievementId = id || _id;
 
   try {
     const deleted = await Achievement.findByIdAndDelete(achievementId);
@@ -281,25 +304,24 @@ export const deleteAchievement = async (req, res) => {
   }
 };
 
-
+// GET BY pkg_id
 export const getAchievementsByPkgId = async (req, res) => {
   const { pkgId } = req.params;
   if (!pkgId) return res.status(400).json({ error: 'pkgId is required' });
 
   try {
     const achievements = await Achievement.find({ pkg_id: pkgId }).lean();
-    
+
     if (!achievements.length) {
       return res.status(404).json({ message: 'No achievements found for this pkgId' });
     }
 
-    // Map achievements to rename _id to id
-    const formattedAchievements = achievements.map(achievement => ({
-      id: achievement._id.toString(), // Rename _id to id and convert to string
+    const formatted = achievements.map(achievement => ({
+      id: achievement._id.toString(),
       ...achievement,
     }));
 
-    res.status(200).json(formattedAchievements);
+    res.status(200).json(formatted);
   } catch (error) {
     console.error('Error fetching achievements by pkg_id:', error);
     res.status(500).json({ error: 'Failed to fetch achievements' });

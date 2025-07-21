@@ -19,4 +19,7 @@ tokenTransactionSchema.pre('save', function(next) {
   next();
 });
 
-export default mongoose.model('TokenTransaction', tokenTransactionSchema);
+// Register the schema as a model, but avoid re-registering if already defined
+const TokenTransaction = mongoose.models.TokenTransaction || mongoose.model('TokenTransaction', tokenTransactionSchema);
+
+export default TokenTransaction;

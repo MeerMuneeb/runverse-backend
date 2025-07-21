@@ -919,6 +919,8 @@
 import admin from '../config/firebase.js';
 import mongoose from 'mongoose';
 import BlockchainSetting from '../models/BlockchainSetting.js'; // Adjust path as needed
+import TokenTransaction from '../models/TokenTransaction.js'; 
+
 import { addTokens } from './walletController.js';
 
 /**
