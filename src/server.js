@@ -4,6 +4,8 @@ dotenv.config();
 import express from 'express';
 import admin, { initializeFirebase } from './config/firebase.js';
 import connectMongoDB from './config/mongodb.js'; // 🆕 Import MongoDB connector
+import cors from 'cors';
+
 
 // Route imports
 import userRoutes from './routes/userRoutes.js';
@@ -33,6 +35,7 @@ app.use('/api', webhookRoutes);
 
 // ✅ Parse JSON body
 app.use(express.json());
+app.use(cors());
 
 // 🔥 Initialize Firebase
 initializeFirebase();

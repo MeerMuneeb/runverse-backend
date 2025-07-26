@@ -1152,7 +1152,6 @@ export async function getUserTeam(req, res) {
   }
 }
 
-// GET USER BADGES
 export async function addAchievements(req, res) {
   const { uid } = req.params;
   const { badgeId, rewardId, spinnerId } = req.body;
